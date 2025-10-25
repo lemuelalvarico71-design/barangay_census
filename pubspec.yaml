@@ -1,27 +1,24 @@
 name: barangay_census_app
 description: "A new Flutter project."
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.9.2 <4.0.0"
+  sdk: 3.7.0
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8  # iOS style icons
-  syncfusion_flutter_charts: ^26.1.44  # For charts
+  cupertino_icons: ^1.0.8 # iOS style icons
+  syncfusion_flutter_charts: ^26.1.44 # For charts
   image_picker: ^1.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0  # Recommended lints for good coding practices
-
-
+  flutter_lints: ^5.0.0 # Recommended lints for good coding practices
 
 # The following section is specific to Flutter packages.
 flutter:
-
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:

@@ -1,5 +1,4 @@
 import 'package:barangay_census_app/pages/census_data_page.dart';
-import 'package:barangay_census_app/pages/census_page.dart';
 import 'package:barangay_census_app/pages/dashboard_page.dart';
 import 'package:barangay_census_app/pages/household_page.dart';
 import 'package:barangay_census_app/pages/population_page.dart';
@@ -20,36 +19,38 @@ class _DashboardHandlerPageState extends State<DashboardHandlerPage> {
   List pages = [
     DashboardPage(),
     PopulationPage(),
-    CensusPage(),
     HouseholdPage(),
     UserPage(),
     ReportsPage(),
-    CensusDataPage()
+    CensusDataPage(),
   ];
 
-  void onItemTapped(int index) => setState(() => selectedIndex = index);
+  void onItemTapped(int index) {
+    setState(() => selectedIndex = index);
+  }
 
- Widget _buildNavItem(BuildContext context, IconData icon, String title, int index) {
-  bool isSelected = selectedIndex == index;
+  Widget _buildNavItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    int index,
+  ) {
+    bool isSelected = selectedIndex == index;
 
-  return ListTile(
-    leading: Icon(
-      icon,
-      color: isSelected ? Colors.white : Colors.white70,
-    ),
-    title: Text(
-      title,
-      style: TextStyle(
-        color: isSelected ? Colors.white : Colors.white70,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Colors.white : Colors.white70),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isSelected ? Colors.white : Colors.white70,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
       ),
-    ),
-    selected: isSelected,
-    selectedTileColor: Colors.blue[800],
-    onTap: () => onItemTapped(index),
-  );
-}
-
+      selected: isSelected,
+      selectedTileColor: Colors.blue[800],
+      onTap: () => onItemTapped(index),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,13 +82,19 @@ class _DashboardHandlerPageState extends State<DashboardHandlerPage> {
                 _buildNavItem(context, Icons.bar_chart, 'Reports', 4),
                 _buildNavItem(context, Icons.data_usage, 'Census Data', 5),
                 const Spacer(),
-                _buildNavItem(context, Icons.logout, 'Logout', 6),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.white70),
+                  title: const Text(
+                    'Logout',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  onTap:
+                      () => Navigator.pushReplacementNamed(context, '/login'),
+                ),
               ],
             ),
           ),
-          Expanded(
-            child: pages[selectedIndex],
-          ),
+          Expanded(child: pages[selectedIndex]),
         ],
       ),
     );

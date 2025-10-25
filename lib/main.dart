@@ -14,13 +14,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Barangay Census Analytics',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
       initialRoute: '/login', // Start with login page
       routes: {
         '/login': (context) => const LoginPage(),
-         '/handler_page': (context) => const DashboardHandlerPage(),
+        '/dashboard': (context) => const DashboardHandlerPage(),
       },
     );
   }
