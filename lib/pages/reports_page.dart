@@ -5,6 +5,11 @@ class ReportsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Reports Page'));
+    return const Center(
+      child: Text(
+        'Reports Page',
+        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      ),
+    );
   }
 }

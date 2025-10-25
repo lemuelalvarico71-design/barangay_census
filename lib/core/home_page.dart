@@ -16,15 +16,17 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
+  String fullname = 'User';
 
-  final List<Widget> pages = [
-    DashboardPage(),
-    PopulationPage(),
-    HouseholdPage(),
-    UserPage(),
-    ReportsPage(),
-    CensusDataPage(),
-  ];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Get fullname passed from LoginPage
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String) {
+      fullname = args;
+    }
+  }
 
   void onItemTapped(int index) {
     setState(() => selectedIndex = index);
@@ -32,6 +34,15 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      DashboardPage(fullname: fullname),
+      const PopulationPage(),
+      const HouseholdPage(),
+      const UserPage(),
+      const ReportsPage(),
+      const CensusDataPage(),
+    ];
+
     return Scaffold(
       body: Row(
         children: [

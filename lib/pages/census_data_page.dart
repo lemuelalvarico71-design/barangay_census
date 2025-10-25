@@ -5,6 +5,11 @@ class CensusDataPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Census Data'));
+    return const Center(
+      child: Text(
+        'Census Data',
+        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      ),
+    );
   }
 }

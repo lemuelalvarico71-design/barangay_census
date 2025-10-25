@@ -5,6 +5,11 @@ class PopulationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Population'));
+    return const Center(
+      child: Text(
+        'Population',
+        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      ),
+    );
   }
 }

@@ -82,10 +82,10 @@ class AppSidebar extends StatelessWidget {
           _buildNavItem(context, Icons.data_usage, 'Census Data', 5),
           const Spacer(),
           ListTile(
-            leading: const Icon(Icons.logout, color: Colors.white70, size: 20),
+            leading: const Icon(Icons.logout, color: Colors.red, size: 20),
             title: const Text(
               'Logout',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: Colors.red, fontSize: 14),
             ),
             onTap: () => Navigator.pushReplacementNamed(context, '/login'),
           ),

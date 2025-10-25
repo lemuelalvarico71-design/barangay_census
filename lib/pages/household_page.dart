@@ -5,6 +5,11 @@ class HouseholdPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Household'));
+    return const Center(
+      child: Text(
+        'Household',
+        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      ),
+    );
   }
 }
