@@ -1,5 +1,6 @@
-import 'package:barangay_census_app/core/dashboard_handler_page.dart';
+import 'package:barangay_census_app/core/home_page.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'pages/login_page.dart';
 
 void main() {
@@ -14,11 +15,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Barangay Census Analytics',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      initialRoute: '/login', // Start with login page
+      theme: ThemeData(
+        textTheme: GoogleFonts.poppinsTextTheme(),
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+      ),
+      initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginPage(),
-        '/dashboard': (context) => const DashboardHandlerPage(),
+        '/home': (context) => const HomePage(),
       },
     );
   }

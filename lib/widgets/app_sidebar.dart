@@ -1,48 +1,51 @@
 import 'package:flutter/material.dart';
 
-class AppSidebar extends StatefulWidget {
-  const AppSidebar({super.key});
+class AppSidebar extends StatelessWidget {
+  final int selectedIndex;
+  final Function(int) onItemTapped;
 
-  @override
-  State<AppSidebar> createState() => _AppSidebarState();
-}
+  const AppSidebar({
+    super.key,
+    required this.selectedIndex,
+    required this.onItemTapped,
+  });
 
-class _AppSidebarState extends State<AppSidebar> {
-  String _selectedItem = 'Dashboard'; // Default selected item
+  Widget _buildNavItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    int index,
+  ) {
+    bool isSelected = selectedIndex == index;
 
-  void _selectItem(String title) {
-    setState(() {
-      _selectedItem = title;
-    });
-    if (title == 'Dashboard') {
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    } else if (title == 'Population') {
-      Navigator.pushReplacementNamed(context, '/population');
-    } else if (title == 'Households') {
-      Navigator.pushReplacementNamed(context, '/household');
-    } else if (title == 'User Management') {
-      Navigator.pushReplacementNamed(context, '/user_management');
-    } else if (title == 'Reports') {
-      Navigator.pushReplacementNamed(context, '/reports');
-    } else if (title == 'Census Data') {
-      Navigator.pushReplacementNamed(context, '/census_data');
-    } else if (title == 'Logout') {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
-  }
-
-  Widget _buildNavItem(BuildContext context, IconData icon, String title, bool isSelected) {
-    return ListTile(
-      leading: Icon(icon, color: isSelected ? Colors.white : Colors.white70),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.white70,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        border:
+            isSelected
+                ? Border(left: BorderSide(color: Colors.yellow[400]!, width: 4))
+                : null,
+        color:
+            isSelected
+                ? Colors.blue.withValues(alpha: 0.2)
+                : Colors.transparent,
       ),
-      selected: isSelected,
-      onTap: () => _selectItem(title),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: isSelected ? Colors.white : Colors.white70,
+          size: 20,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            color: isSelected ? Colors.white : Colors.white70,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        selected: isSelected,
+        onTap: () => onItemTapped(index),
+      ),
     );
   }
 
@@ -50,13 +53,15 @@ class _AppSidebarState extends State<AppSidebar> {
   Widget build(BuildContext context) {
     return Container(
       width: 250,
-      color: Colors.blue[700],
+      color: Color(0xFF031273),
       child: Column(
         children: [
+          SizedBox(height: 20),
+          Image.asset('assets/images/logo.png', height: 80, width: 80),
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(
-              'Barangay Census\nAnalytics',
+              'Brgy. Rizal Census Management',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -65,15 +70,25 @@ class _AppSidebarState extends State<AppSidebar> {
               textAlign: TextAlign.center,
             ),
           ),
-          const Divider(color: Colors.white54),
-          _buildNavItem(context, Icons.dashboard, 'Dashboard', _selectedItem == 'Dashboard'),
-          _buildNavItem(context, Icons.people, 'Population', _selectedItem == 'Population'),
-          _buildNavItem(context, Icons.home, 'Households', _selectedItem == 'Households'),
-          _buildNavItem(context, Icons.group, 'User Management', _selectedItem == 'User Management'),
-          _buildNavItem(context, Icons.bar_chart, 'Reports', _selectedItem == 'Reports'),
-          _buildNavItem(context, Icons.data_usage, 'Census Data', _selectedItem == 'Census Data'),
+          Container(
+            height: 1,
+            decoration: BoxDecoration(color: Colors.blueGrey),
+          ),
+          _buildNavItem(context, Icons.dashboard, 'Dashboard', 0),
+          _buildNavItem(context, Icons.people, 'Population', 1),
+          _buildNavItem(context, Icons.home, 'Households', 2),
+          _buildNavItem(context, Icons.group, 'User Management', 3),
+          _buildNavItem(context, Icons.bar_chart, 'Reports', 4),
+          _buildNavItem(context, Icons.data_usage, 'Census Data', 5),
           const Spacer(),
-          _buildNavItem(context, Icons.logout, 'Logout', _selectedItem == 'Logout'),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.white70, size: 20),
+            title: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            onTap: () => Navigator.pushReplacementNamed(context, '/login'),
+          ),
         ],
       ),
     );
