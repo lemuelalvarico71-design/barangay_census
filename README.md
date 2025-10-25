@@ -1,16 +1,13 @@
-# barangay_census_app
+# Brgy. Rizal Census Management System
 
-A new Flutter project.
+A comprehensive census management application for Barangay Rizal.
 
-## Getting Started
+## Screenshots
 
-This project is a starting point for a Flutter application.
+### Login Page
 
-A few resources to get you started if this is your first Flutter project:
+![Login Page](ss/login.png)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### Home/Dashboard
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![Home Page](ss/home.png)
