@@ -21,6 +21,9 @@ Dr. Rizal Census Management Sytsem with Analytics.
 ## Installation
 
 1. Clone the repository
+   ```bash
+   git clone https://github.com/lemuelalvarico71-design/barangay_census/tree/census-v2.git
+   ```
 2. Install dependencies:
    ```bash
    flutter pub get
@@ -86,14 +89,3 @@ INSERT INTO `users` (`fullname`, `email`, `username`, `password`, `role`) VALUES
 - **Username:** lemuel
 - **Password:** 123456
 - **Role:** Admin
-
-## Project Structure
-
-```
-lib/
-├── config/          # Database configuration
-├── core/           # Core pages (HomePage)
-├── pages/          # Application pages
-├── services/       # Business logic services
-└── widgets/        # Reusable widgets
-```
