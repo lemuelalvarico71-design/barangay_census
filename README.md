@@ -21,15 +21,23 @@ Dr. Rizal Census Management Sytsem with Analytics.
 ## Installation
 
 1. Clone the repository
+
    ```bash
    git clone https://github.com/lemuelalvarico71-design/barangay_census/tree/census-v2.git
+
    ```
-2. Install dependencies:
+
+2. Change Dart SDK version in pubspec.yaml with your current dark SDK version:
+   ```bash
+   environment:
+      sdk: ">=3.9.2 <4.0.0"
+   ```
+3. Install dependencies:
    ```bash
    flutter pub get
    ```
-3. Configure database connection (see Database Setup below)
-4. Run the application:
+4. Configure database connection (see Database Setup below)
+5. Run the application:
    ```bash
    flutter run
    ```
