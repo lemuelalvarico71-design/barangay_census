@@ -60,7 +60,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 480, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 530, vertical: 5),
             child: Card(
               elevation: 4,
               color: Colors.white,
