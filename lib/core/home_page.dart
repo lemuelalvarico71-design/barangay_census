@@ -21,7 +21,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Get fullname passed from LoginPage
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is String) {
       fullname = args;
