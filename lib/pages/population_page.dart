@@ -1,4 +1,3 @@
-
 import 'package:barangay_census_app/models/household.dart';
 import 'package:barangay_census_app/services/database_service.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +10,6 @@ class PopulationPage extends StatefulWidget {
 }
 
 class _PopulationPageState extends State<PopulationPage> {
-
-
-  // Data
   List<Household> _households = [];
   bool _isLoading = true;
   String? _error;
@@ -40,35 +36,51 @@ class _PopulationPageState extends State<PopulationPage> {
     }
   }
 
+  // ────── Delete Household ──────
+  Future<void> _deleteHousehold(int id, int index) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Household?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await DatabaseService.instance.deleteHousehold(id);
+      setState(() {
+        _households.removeAt(index);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Household deleted'), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   // ────── Stats ──────
-int get totalPopulation {
-  return _households.fold(
-    0,
-    (sum, h) => sum + h.familyMembers.length,   // <-- count real members
-  );
-}
-
-int get totalHouseholds => _households.length;
-
-double get avgFamilySize =>
-    totalHouseholds > 0 ? totalPopulation / totalHouseholds : 0;
-
-int get gpsVerified => _households.where((h) => h.gpsVerified).length;
-
-double get totalIncome => _households.fold(
-  0.0,
-  (sum, h) => sum + h.economicData.fold(0.0, (s, e) => s + e.monthlyIncome),
-);
-
+  int get totalPopulation => _households.fold(0, (sum, h) => sum + h.familyMembers.length);
+  int get totalHouseholds => _households.length;
+  double get avgFamilySize => totalHouseholds > 0 ? totalPopulation / totalHouseholds : 0;
+  double get totalIncome => _households.fold(0.0, (sum, h) => sum + h.economicData.fold(0.0, (s, e) => s + e.monthlyIncome));
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Population Census'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
-        ],
       ),
       body: _buildBody(),
     );
@@ -86,7 +98,6 @@ double get totalIncome => _households.fold(
           const SizedBox(height: 24),
           _buildDataTable(),
           const SizedBox(height: 24),
-        
           _buildLastSync(),
         ],
       ),
@@ -113,14 +124,11 @@ double get totalIncome => _households.fold(
       children: [
         Expanded(child: _statCard('Total Population', totalPopulation.toString(), Icons.people)),
         const SizedBox(width: 12),
-            Expanded(child: _statCard('Households', totalHouseholds.toString(), Icons.home)),
-            const SizedBox(width: 12),
-            Expanded(child: _statCard('Avg Family', avgFamilySize.toStringAsFixed(1), Icons.family_restroom)),
-
-            const SizedBox(width: 12),
-          
-            Expanded(child: _statCard('Total Income', '₱${totalIncome.toStringAsFixed(0)}', Icons.attach_money)),
-        
+        Expanded(child: _statCard('Households', totalHouseholds.toString(), Icons.home)),
+        const SizedBox(width: 12),
+        Expanded(child: _statCard('Avg Family', avgFamilySize.toStringAsFixed(1), Icons.family_restroom)),
+        const SizedBox(width: 12),
+        Expanded(child: _statCard('Total Income', '₱${totalIncome.toStringAsFixed(0)}', Icons.attach_money)),
       ],
     );
   }
@@ -172,17 +180,26 @@ double get totalIncome => _households.fold(
                               DataColumn(label: Text('Members', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Barangay', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Income', style: TextStyle(fontWeight: FontWeight.bold))),
-                           
+                              DataColumn(label: Text('Action')), // New column
                             ],
-                            rows: _households.map((h) {
+                            rows: _households.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final h = entry.value;
                               final totalIncome = h.economicData.fold(0.0, (s, e) => s + e.monthlyIncome);
+
                               return DataRow(cells: [
                                 DataCell(Text(h.householdNumber, style: const TextStyle(fontWeight: FontWeight.w500))),
                                 DataCell(Text(h.headOfHousehold, overflow: TextOverflow.ellipsis)),
                                 DataCell(Text(h.totalMembers.toString(), textAlign: TextAlign.center)),
                                 DataCell(Text(h.barangay ?? '-', overflow: TextOverflow.ellipsis)),
                                 DataCell(Text('₱${totalIncome.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green))),
-                               
+                                DataCell(
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    tooltip: 'Delete Household',
+                                    onPressed: () => _deleteHousehold(h.id!, index),
+                                  ),
+                                ),
                               ]);
                             }).toList(),
                           ),
@@ -195,8 +212,6 @@ double get totalIncome => _households.fold(
       ),
     );
   }
-
-  
 
   Widget _buildLastSync() {
     return Text(
