@@ -121,4 +121,34 @@ class DatabaseService {
       return <EconomicEntry>[];
     }
   }
+
+  // ────── USER MANAGEMENT ──────
+Future<int> insertUser({
+  required String fullname,
+  required String email,
+  required String username,
+  required String password,
+  required String role,
+}) async {
+  final conn = await _connection;
+  final result = await conn.query(
+    '''
+    INSERT INTO users (fullname, email, username, password, role)
+    VALUES (?, ?, ?, ?, ?)
+    ''',
+    [fullname, email, username, password, role],
+  );
+  return result.insertId!;
+}
+
+Future<List<Map<String, dynamic>>> getAllUsers() async {
+  final conn = await _connection;
+  final results = await conn.query('SELECT id, fullname, email, username, role FROM users ORDER BY created_at DESC');
+  return results.map((row) => row.fields).toList();
+}
+
+Future<void> deleteUser(int id) async {
+  final conn = await _connection;
+  await conn.query('DELETE FROM users WHERE id = ?', [id]);
+}
 }
