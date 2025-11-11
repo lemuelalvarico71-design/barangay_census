@@ -118,8 +118,7 @@ double get totalIncome => _households.fold(
             Expanded(child: _statCard('Avg Family', avgFamilySize.toStringAsFixed(1), Icons.family_restroom)),
 
             const SizedBox(width: 12),
-            Expanded(child: _statCard('GPS Verified', gpsVerified.toString(), Icons.location_on)),
-            const SizedBox(width: 12),
+          
             Expanded(child: _statCard('Total Income', '₱${totalIncome.toStringAsFixed(0)}', Icons.attach_money)),
         
       ],
