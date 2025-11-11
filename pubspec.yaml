@@ -21,6 +21,11 @@ dependencies:
   # Database
   mysql1: ^0.20.0
 
+  # file picker
+  file_picker: ^10.3.3
+
+  dotted_border: ^3.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

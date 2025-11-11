@@ -1,4 +1,8 @@
 // models/household.dart
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:mysql1/mysql1.dart';
+
 class Household {
   final String householdNumber;
   final String headOfHousehold;
@@ -28,37 +32,65 @@ class Household {
     required this.gpsVerified,
     List<FamilyMember>? familyMembers,
     List<EconomicEntry>? economicData,
-  })  : familyMembers = familyMembers ?? [],
-        economicData = economicData ?? [];
+  })  : familyMembers = familyMembers ?? <FamilyMember>[],
+        economicData = economicData ?? <EconomicEntry>[];
 
-  /// Helper to create from DB row
-  factory Household.fromMap(Map<String, dynamic> map) => Household(
-        householdNumber: map['household_number'] as String,
-        headOfHousehold: map['head_of_household'] as String,
-        totalMembers: map['total_members'] as int,
-        contactNumber: map['contact_number'] as String?,
-        street: map['street'] as String?,
-        barangay: map['barangay'] as String?,
-        city: map['city'] as String?,
-        province: map['province'] as String?,
-        zipCode: map['zip_code'] as String?,
-        gpsVerified: (map['gps_verified'] as int) == 1,
-      );
+  // ────── BLOB → String (for JSON) ──────
+  static String _blobToString(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    if (value is Blob) return String.fromCharCodes(value.toBytes());
+    return value.toString();
+  }
 
-      Map<String, dynamic> toJson() => {
-  'household_number': householdNumber,
-  'head_of_household': headOfHousehold,
-  'total_members': totalMembers,
-  'contact_number': contactNumber,
-  'street': street,
-  'barangay': barangay,
-  'city': city,
-  'province': province,
-  'zip_code': zipCode,
-  'gps_verified': gpsVerified,
-  'family_members': familyMembers.map((m) => m.toJson()).toList(),
-  'economic_data': economicData.map((e) => e.toJson()).toList(),
-};
+  // ────── Parse JSON list from BLOB/String ──────
+  static List<T> _parseJsonList<T>(
+    dynamic json,
+    T Function(Map<String, dynamic>) fromMap,
+  ) {
+    if (json == null) return <T>[];
+    final String jsonStr = _blobToString(json);
+    if (jsonStr.isEmpty) return <T>[];
+    try {
+      final List<dynamic> list = jsonDecode(jsonStr);
+      return list.cast<Map<String, dynamic>>().map(fromMap).toList();
+    } catch (e) {
+      return <T>[];
+    }
+  }
+
+  // ────── Create from DB row ──────
+  factory Household.fromMap(Map<String, dynamic> map) {
+    return Household(
+      householdNumber: map['household_number'] as String,
+      headOfHousehold: map['head_of_household'] as String,
+      totalMembers: map['total_members'] as int,
+      contactNumber: map['contact_number'] as String?,
+      street: map['street'] as String?,
+      barangay: map['barangay'] as String?,
+      city: map['city'] as String?,
+      province: map['province'] as String?,
+      zipCode: map['zip_code'] as String?,
+      gpsVerified: (map['gps_verified'] as int?) == 1,
+      familyMembers: _parseJsonList(map['family_members'], FamilyMember.fromMap),
+      economicData: _parseJsonList(map['economic_data'], EconomicEntry.fromMap),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'household_number': householdNumber,
+        'head_of_household': headOfHousehold,
+        'total_members': totalMembers,
+        'contact_number': contactNumber,
+        'street': street,
+        'barangay': barangay,
+        'city': city,
+        'province': province,
+        'zip_code': zipCode,
+        'gps_verified': gpsVerified ? 1 : 0,
+        'family_members': familyMembers.map((m) => m.toJson()).toList(),
+        'economic_data': economicData.map((e) => e.toJson()).toList(),
+      };
 }
 
 class FamilyMember {
@@ -66,26 +98,41 @@ class FamilyMember {
   final int age;
   final String gender;
   final String relationship;
+  final Uint8List? philsysImage; // ← Per member
 
   FamilyMember({
     required this.name,
     required this.age,
     required this.gender,
     required this.relationship,
+    this.philsysImage,
   });
 
-  factory FamilyMember.fromMap(Map<String, dynamic> map) => FamilyMember(
-        name: map['name'] as String,
-        age: map['age'] as int,
-        gender: map['gender'] as String,
-        relationship: map['relationship'] as String,
-      );
+factory FamilyMember.fromMap(Map<String, dynamic> map) {
+  Uint8List? image;
+  final img = map['philsys_image'];
+  if (img is String && img.isNotEmpty) {
+    try {
+      image = base64Decode(img);
+    } catch (e) {
+      image = null;
+    }
+  }
+  return FamilyMember(
+    name: map['name'] as String,
+    age: map['age'] as int,
+    gender: map['gender'] as String,
+    relationship: map['relationship'] as String,
+    philsysImage: image,
+  );
+}
 
-      Map<String, dynamic> toJson() => {
+ Map<String, dynamic> toJson() => {
   'name': name,
   'age': age,
   'gender': gender,
   'relationship': relationship,
+  'philsys_image': philsysImage != null ? base64Encode(philsysImage!) : null,
 };
 }
 
@@ -109,11 +156,10 @@ class EconomicEntry {
         employer: map['employer'] as String,
       );
 
-      Map<String, dynamic> toJson() => {
-  'member_name': memberName,
-  'occupation': occupation,
-  'monthly_income': monthlyIncome,
-  'employer': employer,
-};
+  Map<String, dynamic> toJson() => {
+        'member_name': memberName,
+        'occupation': occupation,
+        'monthly_income': monthlyIncome,
+        'employer': employer,
+      };
 }
-
