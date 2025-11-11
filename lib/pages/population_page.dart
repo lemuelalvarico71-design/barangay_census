@@ -178,6 +178,7 @@ class _PopulationPageState extends State<PopulationPage> {
                               DataColumn(label: Text('HH #', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Head', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Members', style: TextStyle(fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text('Purok', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Barangay', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Income', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Action')), // New column
@@ -191,6 +192,7 @@ class _PopulationPageState extends State<PopulationPage> {
                                 DataCell(Text(h.householdNumber, style: const TextStyle(fontWeight: FontWeight.w500))),
                                 DataCell(Text(h.headOfHousehold, overflow: TextOverflow.ellipsis)),
                                 DataCell(Text(h.totalMembers.toString(), textAlign: TextAlign.center)),
+                                 DataCell(Text(h.street ?? '-', overflow: TextOverflow.ellipsis)),
                                 DataCell(Text(h.barangay ?? '-', overflow: TextOverflow.ellipsis)),
                                 DataCell(Text('₱${totalIncome.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green))),
                                 DataCell(

@@ -109,7 +109,11 @@ class _DashboardPageState extends State<DashboardPage>
                         ),
                         Expanded(
                           child: _buildStatCard(
-                              "Registered Voters", "0", Colors.amber),
+                              "Employed Residents", "0", Colors.amber),
+                        ),
+                          Expanded(
+                          child: _buildStatCard(
+                              "Children (Below 18)", "0", Colors.brown),
                         ),
                       ],
                     );
