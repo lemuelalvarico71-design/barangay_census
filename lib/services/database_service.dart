@@ -45,7 +45,6 @@ class DatabaseService {
         household.gpsVerified ? 1 : 0,
         jsonEncode(household.familyMembers.map((m) => m.toJson()).toList()),
         jsonEncode(household.economicData.map((e) => e.toJson()).toList()),
-        // REMOVED: philsys_image
       ],
     );
 
@@ -60,6 +59,7 @@ class DatabaseService {
     return results.map((row) {
       final f = row.fields;
       return Household(
+        id: f['id'] as int?, // ← Make sure your model supports `id`
         householdNumber: f['household_number'] as String,
         headOfHousehold: f['head_of_household'] as String,
         totalMembers: f['total_members'] as int,
@@ -74,6 +74,19 @@ class DatabaseService {
         economicData: _parseEconomicData(f['economic_data']),
       );
     }).toList();
+  }
+
+  // ────── DELETE HOUSEHOLD BY ID ──────
+  Future<void> deleteHousehold(int id) async {
+    final conn = await _connection;
+    final result = await conn.query(
+      'DELETE FROM households WHERE id = ?',
+      [id],
+    );
+
+    if (result.affectedRows == 0) {
+      throw Exception('Household with id $id not found');
+    }
   }
 
   // ────── Helper: BLOB → String ──────

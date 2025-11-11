@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:mysql1/mysql1.dart';
 
 class Household {
+  final int? id;
   final String householdNumber;
   final String headOfHousehold;
   final int totalMembers;
@@ -20,6 +21,7 @@ class Household {
   final List<EconomicEntry> economicData;
 
   Household({
+    this.id,
     required this.householdNumber,
     required this.headOfHousehold,
     required this.totalMembers,
