@@ -95,12 +95,19 @@ class Household {
       };
 }
 
+// models/household.dart → Add to FamilyMember class
 class FamilyMember {
   final String name;
   final int age;
   final String gender;
   final String relationship;
-  final Uint8List? philsysImage; // ← Per member
+  final Uint8List? philsysImage;
+
+  // ────── NEW: Educational Status ──────
+  final String? educationStatus;     // e.g., "Undergraduate", "Graduate", "High School", etc.
+  final String? yearLevel;          // only if Undergraduate
+  final String? course;             // only if Undergraduate
+  final String? employmentStatus;   // only if Graduate: "Employed" or "Unemployed"
 
   FamilyMember({
     required this.name,
@@ -108,34 +115,42 @@ class FamilyMember {
     required this.gender,
     required this.relationship,
     this.philsysImage,
+    this.educationStatus,
+    this.yearLevel,
+    this.course,
+    this.employmentStatus,
   });
 
-factory FamilyMember.fromMap(Map<String, dynamic> map) {
-  Uint8List? image;
-  final img = map['philsys_image'];
-  if (img is String && img.isNotEmpty) {
-    try {
-      image = base64Decode(img);
-    } catch (e) {
-      image = null;
+  factory FamilyMember.fromMap(Map<String, dynamic> map) {
+    Uint8List? image;
+    final img = map['philsys_image'];
+    if (img is String && img.isNotEmpty) {
+      try { image = base64Decode(img); } catch (e) { image = null; }
     }
+    return FamilyMember(
+      name: map['name'] as String,
+      age: map['age'] as int,
+      gender: map['gender'] as String,
+      relationship: map['relationship'] as String,
+      philsysImage: image,
+      educationStatus: map['education_status'] as String?,
+      yearLevel: map['year_level'] as String?,
+      course: map['course'] as String?,
+      employmentStatus: map['employment_status'] as String?,
+    );
   }
-  return FamilyMember(
-    name: map['name'] as String,
-    age: map['age'] as int,
-    gender: map['gender'] as String,
-    relationship: map['relationship'] as String,
-    philsysImage: image,
-  );
-}
 
- Map<String, dynamic> toJson() => {
-  'name': name,
-  'age': age,
-  'gender': gender,
-  'relationship': relationship,
-  'philsys_image': philsysImage != null ? base64Encode(philsysImage!) : null,
-};
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'age': age,
+    'gender': gender,
+    'relationship': relationship,
+    'philsys_image': philsysImage != null ? base64Encode(philsysImage!) : null,
+    'education_status': educationStatus,
+    'year_level': yearLevel,
+    'course': course,
+    'employment_status': employmentStatus,
+  };
 }
 
 class EconomicEntry {

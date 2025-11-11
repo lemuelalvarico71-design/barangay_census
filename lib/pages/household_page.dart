@@ -142,17 +142,19 @@ class _HouseholdPageState extends State<HouseholdPage> {
   }
 
 
-  // ────── Family Member Dialog (with PhilSys ID upload) ──────
 void _addFamilyMemberDialog({Map<String, dynamic>? existingMember, int? index}) {
   final nameCtrl = TextEditingController(text: existingMember?['name']);
   final ageCtrl = TextEditingController(text: existingMember?['age']?.toString());
   String gender = existingMember?['gender'] ?? 'Male';
   final relCtrl = TextEditingController(text: existingMember?['relationship']);
-  
-  // Local state for image in dialog
-  Uint8List? dialogImageBytes = existingMember?['philsys_image'] as Uint8List?;
 
-  // Rebuild trigger
+  // ────── Educational Fields ──────
+  String? educationStatus = existingMember?['education_status'];
+  final yearLevelCtrl = TextEditingController(text: existingMember?['year_level']);
+  final courseCtrl = TextEditingController(text: existingMember?['course']);
+  String? employmentStatus = existingMember?['employment_status'];
+
+  Uint8List? dialogImageBytes = existingMember?['philsys_image'] as Uint8List?;
   final dialogKey = GlobalKey();
 
   Future<void> pickImage() async {
@@ -161,7 +163,6 @@ void _addFamilyMemberDialog({Map<String, dynamic>? existingMember, int? index}) 
       allowMultiple: false,
       withData: true,
     );
-
     if (result != null && result.files.single.bytes != null) {
       dialogImageBytes = result.files.single.bytes!;
       (dialogKey.currentContext as Element?)?.markNeedsBuild();
@@ -187,21 +188,14 @@ void _addFamilyMemberDialog({Map<String, dynamic>? existingMember, int? index}) 
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Full Name
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: 'Full Name'),
-                  ),
+                  // Name
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Full Name')),
                   const SizedBox(height: 12),
-              
+
                   // Age
-                  TextField(
-                    controller: ageCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Age'),
-                  ),
+                  TextField(controller: ageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Age')),
                   const SizedBox(height: 12),
-              
+
                   // Gender
                   DropdownButtonFormField<String>(
                     value: gender,
@@ -211,27 +205,71 @@ void _addFamilyMemberDialog({Map<String, dynamic>? existingMember, int? index}) 
                       DropdownMenuItem(value: 'Female', child: Text('Female')),
                       DropdownMenuItem(value: 'Other', child: Text('Other')),
                     ],
+                    onChanged: (v) { gender = v!; setDialogState(() {}); },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Relationship
+                  TextField(controller: relCtrl, decoration: const InputDecoration(labelText: 'Relationship')),
+                  const SizedBox(height: 16),
+
+                  // ────── Educational Status ──────
+                  const Text('Educational Status', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+
+                  DropdownButtonFormField<String>(
+                    value: educationStatus,
+                    hint: const Text('Select status'),
+                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    items: [
+                      'None',
+                      'Elementary',
+                      'High School',
+                      'Undergraduate',
+                      'Graduate',
+                      'Vocational',
+                      'Post-Graduate',
+                    ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) {
-                      gender = v!;
+                      educationStatus = v;
+                      yearLevelCtrl.clear();
+                      courseCtrl.clear();
+                      employmentStatus = null;
                       setDialogState(() {});
                     },
                   ),
                   const SizedBox(height: 12),
-              
-                  // Relationship
-                  TextField(
-                    controller: relCtrl,
-                    decoration: const InputDecoration(labelText: 'Relationship'),
-                  ),
-                  const SizedBox(height: 16),
-              
+
+                  // ────── Conditional: Undergraduate ──────
+                  if (educationStatus == 'Undergraduate') ...[
+                    TextField(controller: yearLevelCtrl, decoration: const InputDecoration(labelText: 'Year Level (e.g., 1st Year)')),
+                    const SizedBox(height: 12),
+                    TextField(controller: courseCtrl, decoration: const InputDecoration(labelText: 'Course (e.g., BS Computer Science)')),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // ────── Conditional: Graduate ──────
+                  if (educationStatus == 'Graduate')
+                    Column(
+                      children: [
+                        RadioListTile<String>(
+                          title: const Text('Employed'),
+                          value: 'Employed',
+                          groupValue: employmentStatus,
+                          onChanged: (v) { employmentStatus = v; setDialogState(() {}); },
+                        ),
+                        RadioListTile<String>(
+                          title: const Text('Unemployed'),
+                          value: 'Unemployed',
+                          groupValue: employmentStatus,
+                          onChanged: (v) { employmentStatus = v; setDialogState(() {}); },
+                        ),
+                      ],
+                    ),
+
                   // ────── PhilSys ID Upload ──────
-                  const Text(
-                    'PhilSys ID',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
+                  const Text('PhilSys ID', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-              
                   dialogImageBytes == null
                       ? _buildUploadArea(pickImage)
                       : _buildDialogImagePreview(dialogImageBytes!, pickImage, removeImage),
@@ -240,20 +278,37 @@ void _addFamilyMemberDialog({Map<String, dynamic>? existingMember, int? index}) 
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 if (nameCtrl.text.isEmpty) return;
+
+                // Validation
+                if (educationStatus == 'Undergraduate' && (yearLevelCtrl.text.isEmpty || courseCtrl.text.isEmpty)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Year Level and Course are required for Undergraduate')),
+                  );
+                  return;
+                }
+                if (educationStatus == 'Graduate' && employmentStatus == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please select Employed or Unemployed')),
+                  );
+                  return;
+                }
+
                 final member = {
                   'name': nameCtrl.text.trim(),
                   'age': int.tryParse(ageCtrl.text) ?? 0,
                   'gender': gender,
                   'relationship': relCtrl.text.trim(),
-                  'philsys_image': dialogImageBytes, // ← Save image
+                  'philsys_image': dialogImageBytes,
+                  'education_status': educationStatus,
+                  'year_level': educationStatus == 'Undergraduate' ? yearLevelCtrl.text.trim() : null,
+                  'course': educationStatus == 'Undergraduate' ? courseCtrl.text.trim() : null,
+                  'employment_status': educationStatus == 'Graduate' ? employmentStatus : null,
                 };
+
                 setState(() {
                   if (index != null) {
                     _familyMembers[index] = member;
@@ -470,31 +525,34 @@ Widget _buildDialogImagePreview(
       addAction: () => _addFamilyMemberDialog(),
       list: _familyMembers,
       itemBuilder: (m, i) => Card(
-        child: ListTile(
-          title: Text(m['name']),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Age: ${m['age']} | ${m['gender']} | ${m['relationship']}'),
-              const SizedBox(height: 8),
-              m['philsys_image'] == null
-                  ? _buildUploadButton(i)
-                  : _buildMemberImagePreview(m['philsys_image'], i),
-            ],
+  child: ListTile(
+    title: Text(m['name']),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Age: ${m['age']} | ${m['gender']} | ${m['relationship']}'),
+        if (m['education_status'] != null)
+          Text(
+            'Education: ${m['education_status']}'
+            '${m['education_status'] == 'Undergraduate' ? ' - ${m['year_level']} ${m['course']}' : ''}'
+            '${m['education_status'] == 'Graduate' ? ' - ${m['employment_status']}' : ''}',
+            style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.orange),
-                  onPressed: () => _addFamilyMemberDialog(existingMember: m, index: i)),
-              IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _deleteItem(_familyMembers, i)),
-            ],
-          ),
-        ),
-      ),
+        const SizedBox(height: 8),
+        m['philsys_image'] == null
+            ? _buildUploadButton(i)
+            : _buildMemberImagePreview(m['philsys_image'], i),
+      ],
+    ),
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(icon: const Icon(Icons.edit, color: Colors.orange), onPressed: () => _addFamilyMemberDialog(existingMember: m, index: i)),
+        IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteItem(_familyMembers, i)),
+      ],
+    ),
+  ),
+),
     );
   }
 
