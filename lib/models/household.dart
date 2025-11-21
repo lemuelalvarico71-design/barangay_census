@@ -16,6 +16,7 @@ class Household {
   final String? province;
   final String? zipCode;
   final bool gpsVerified;
+  final int censusYear;
 
   final List<FamilyMember> familyMembers;
   final List<EconomicEntry> economicData;
@@ -32,6 +33,7 @@ class Household {
     this.province,
     this.zipCode,
     required this.gpsVerified,
+    required this.censusYear,
     List<FamilyMember>? familyMembers,
     List<EconomicEntry>? economicData,
   })  : familyMembers = familyMembers ?? <FamilyMember>[],
@@ -73,6 +75,7 @@ class Household {
       city: map['city'] as String?,
       province: map['province'] as String?,
       zipCode: map['zip_code'] as String?,
+      censusYear: (map['census_year'] as int?) ?? DateTime.now().year,
       gpsVerified: (map['gps_verified'] as int?) == 1,
       familyMembers: _parseJsonList(map['family_members'], FamilyMember.fromMap),
       economicData: _parseJsonList(map['economic_data'], EconomicEntry.fromMap),

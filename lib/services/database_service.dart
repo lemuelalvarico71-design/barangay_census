@@ -21,35 +21,78 @@ class DatabaseService {
   }
 
   /// Insert household — NO philsys_image column
-  Future<int> insertHousehold(Household household) async {
-    final conn = await _connection;
+ Future<int> insertHousehold(Household household) async {
+  final conn = await _connection;
 
-    final result = await conn.query(
+  final result = await conn.query(
+    '''
+    INSERT INTO households (
+      household_number, head_of_household, total_members, contact_number,
+      street, barangay, city, province, zip_code, gps_verified,
+      census_year
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''',
+    [
+      household.householdNumber,
+      household.headOfHousehold,
+      household.totalMembers,
+      household.contactNumber,
+      household.street,
+      household.barangay,
+      household.city,
+      household.province,
+      household.zipCode,
+      household.gpsVerified ? 1 : 0,
+      household.censusYear, 
+    ],
+  );
+
+  final householdId = result.insertId!;
+
+  // Insert family members
+  for (final member in household.familyMembers) {
+    await conn.query(
       '''
-      INSERT INTO households 
-        (household_number, head_of_household, total_members, contact_number,
-         street, barangay, city, province, zip_code, gps_verified,
-         family_members, economic_data)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO family_members (
+        household_id, name, age, gender, relationship, philsys_image,
+        education_status, year_level, course, employment_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''',
       [
-        household.householdNumber,
-        household.headOfHousehold,
-        household.totalMembers,
-        household.contactNumber,
-        household.street,
-        household.barangay,
-        household.city,
-        household.province,
-        household.zipCode,
-        household.gpsVerified ? 1 : 0,
-        jsonEncode(household.familyMembers.map((m) => m.toJson()).toList()),
-        jsonEncode(household.economicData.map((e) => e.toJson()).toList()),
+        householdId,
+        member.name,
+        member.age,
+        member.gender,
+        member.relationship,
+        member.philsysImage,
+        member.educationStatus,
+        member.yearLevel,
+        member.course,
+        member.employmentStatus,
       ],
     );
-
-    return result.insertId!;
   }
+
+  // Insert economic data
+  for (final eco in household.economicData) {
+    await conn.query(
+      '''
+      INSERT INTO economic_data (
+        household_id, member_name, occupation, monthly_income, employer
+      ) VALUES (?, ?, ?, ?, ?)
+      ''',
+      [
+        householdId,
+        eco.memberName,
+        eco.occupation,
+        eco.monthlyIncome,
+        eco.employer,
+      ],
+    );
+  }
+
+  return householdId;
+}
 
   // ────── GET ALL HOUSEHOLDS ──────
   Future<List<Household>> getAllHouseholds() async {
@@ -67,6 +110,7 @@ class DatabaseService {
         street: f['street'] as String?,
         barangay: f['barangay'] as String?,
         city: f['city'] as String?,
+       censusYear: (f['census_year'] as int?) ?? DateTime.now().year,
         province: f['province'] as String?,
         zipCode: f['zip_code'] as String?,
         gpsVerified: (f['gps_verified'] as int?) == 1,

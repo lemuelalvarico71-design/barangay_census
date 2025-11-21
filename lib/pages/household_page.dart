@@ -1,12 +1,9 @@
-
-
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:barangay_census_app/models/household.dart';
 import 'package:barangay_census_app/services/database_service.dart';
 import 'package:dotted_border/dotted_border.dart';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -32,6 +29,10 @@ class _HouseholdPageState extends State<HouseholdPage> {
   final _provinceController = TextEditingController();
   final _zipController = TextEditingController();
 
+  // ────── Census Year ──────
+  int? _censusYear;
+  final _censusYearController = TextEditingController();
+
   // ────── Dynamic lists ──────
   List<Map<String, dynamic>> _familyMembers = [];
   List<Map<String, dynamic>> _economicData = [];
@@ -49,7 +50,36 @@ class _HouseholdPageState extends State<HouseholdPage> {
     _cityController.dispose();
     _provinceController.dispose();
     _zipController.dispose();
+    _censusYearController.dispose();
     super.dispose();
+  }
+
+  // ────── Year Picker ──────
+  Future<void> _pickCensusYear() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 5),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Colors.purple,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _censusYear = picked.year;
+        _censusYearController.text = picked.year.toString();
+      });
+    }
   }
 
   // ────── Image Picker (Desktop) ──────
@@ -77,14 +107,18 @@ class _HouseholdPageState extends State<HouseholdPage> {
   // ────── Save ──────
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_censusYear == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select Census Year')),
+      );
+      return;
+    }
 
     final household = Household(
       householdNumber: _householdNumberController.text.trim(),
       headOfHousehold: _headOfHouseholdController.text.trim(),
       totalMembers: int.tryParse(_totalFamilyMembersController.text) ?? 0,
-      contactNumber: _contactNumberController.text.isEmpty
-          ? null
-          : _contactNumberController.text.trim(),
+      contactNumber: _contactNumberController.text.isEmpty ? null : _contactNumberController.text.trim(),
       street: _streetController.text.isEmpty ? null : _streetController.text.trim(),
       barangay: _barangayController.text.isEmpty ? null : _barangayController.text.trim(),
       city: _cityController.text.isEmpty ? null : _cityController.text.trim(),
@@ -98,6 +132,10 @@ class _HouseholdPageState extends State<HouseholdPage> {
                 gender: m['gender'],
                 relationship: m['relationship'],
                 philsysImage: m['philsys_image'] as Uint8List?,
+                educationStatus: m['education_status'],
+                yearLevel: m['year_level'],
+                course: m['course'],
+                employmentStatus: m['employment_status'],
               ))
           .toList(),
       economicData: _economicData
@@ -108,6 +146,7 @@ class _HouseholdPageState extends State<HouseholdPage> {
                 employer: e['employer'],
               ))
           .toList(),
+      censusYear: _censusYear!, // ← SAVE YEAR
     );
 
     try {
@@ -132,6 +171,8 @@ class _HouseholdPageState extends State<HouseholdPage> {
         _cityController.clear();
         _provinceController.clear();
         _zipController.clear();
+        _censusYear = null;
+        _censusYearController.clear();
       });
     } catch (e) {
       if (!mounted) return;
@@ -468,7 +509,7 @@ Widget _buildDialogImagePreview(
 
   void _deleteItem(List list, int index) => setState(() => list.removeAt(index));
 
-  // ────── Section Builders ──────
+// ────── Section Builders ──────
   Widget _sectionTitle(String title) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -515,6 +556,20 @@ Widget _buildDialogImagePreview(
             ),
           ),
         ]),
+        const SizedBox(height: 12),
+
+        // ────── CENSUS YEAR FIELD ──────
+        TextFormField(
+          controller: _censusYearController,
+          readOnly: true,
+          decoration: InputDecoration(
+            labelText: 'Census Year *',
+            border: const OutlineInputBorder(),
+            suffixIcon: const Icon(Icons.calendar_today, color: Colors.purple),
+          ),
+          onTap: _pickCensusYear,
+          validator: (v) => _censusYear == null ? 'Required' : null,
+        ),
       ],
     );
   }
