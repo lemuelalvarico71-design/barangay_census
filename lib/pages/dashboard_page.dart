@@ -120,6 +120,9 @@ Future<void> _loadAndPredictPopulation() async {
   }
 }
 
+
+
+
   Map<String, double> _performLinearRegression(List<FlSpot> points) {
     final n = points.length;
     final sumX = points.map((p) => p.x).reduce((a, b) => a + b);

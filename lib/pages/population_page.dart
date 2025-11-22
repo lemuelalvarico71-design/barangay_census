@@ -1,6 +1,7 @@
 import 'package:barangay_census_app/models/household.dart';
 import 'package:barangay_census_app/services/database_service.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class PopulationPage extends StatefulWidget {
   const PopulationPage({super.key});
@@ -9,15 +10,55 @@ class PopulationPage extends StatefulWidget {
   State<PopulationPage> createState() => _PopulationPageState();
 }
 
-class _PopulationPageState extends State<PopulationPage> {
+class _PopulationPageState extends State<PopulationPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
   List<Household> _households = [];
   bool _isLoading = true;
   String? _error;
 
+  final int currentYear = DateTime.now().year;
+
+  // CORRECT: Head of Household is ALWAYS counted + all family members
+  int get totalPopulation {
+    int total = 0;
+    for (var h in _households) {
+      int membersCount = h.familyMembers.length;
+
+      // If head is NOT in the familyMembers list → add +1
+      bool headIsInList = h.familyMembers.any((member) =>
+          member.name.trim().toLowerCase() == h.headOfHousehold.trim().toLowerCase());
+
+      total += membersCount + (headIsInList ? 0 : 1);
+    }
+    return total;
+  }
+
+  int get totalHouseholds => _households.length;
+
+  double get avgFamilySize =>
+      totalHouseholds > 0 ? totalPopulation / totalHouseholds : 0.0;
+
+  double get totalIncome => _households.fold(
+        0.0,
+        (sum, h) => sum + h.economicData.fold(0.0, (acc, e) => acc + (e.monthlyIncome ?? 0.0)),
+      );
+
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2));
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic);
     _loadData();
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -35,50 +76,6 @@ class _PopulationPageState extends State<PopulationPage> {
       });
     }
   }
-
-  // // ────── Delete Household ──────
-  // Future<void> _deleteHousehold(int id, int index) async {
-  //   final confirm = await showDialog<bool>(
-  //     context: context,
-  //     builder: (ctx) => AlertDialog(
-  //       title: const Text('Delete Household?'),
-  //       content: const Text('This action cannot be undone.'),
-  //       actions: [
-  //         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-  //         TextButton(
-  //           onPressed: () => Navigator.pop(ctx, true),
-  //           child: const Text('Delete', style: TextStyle(color: Colors.red)),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-
-  //   if (confirm != true) return;
-
-  //   try {
-  //     await DatabaseService.instance.deleteHousehold(id);
-  //     setState(() {
-  //       _households.removeAt(index);
-  //     });
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text('Household deleted'), backgroundColor: Colors.green),
-  //     );
-  //   } catch (e) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red),
-  //     );
-  //   }
-  // }
-
-  // ────── Stats ──────
-  //todo
-  int get totalPopulation => _households.fold(0, (sum, h) => sum + h.familyMembers.length);
-
-
-  int get totalHouseholds => _households.length;
-  double get avgFamilySize => totalHouseholds > 0 ? totalPopulation / totalHouseholds : 0;
-  double get totalIncome => _households.fold(0.0, (sum, h) => sum + h.economicData.fold(0.0, (s, e) => s + e.monthlyIncome));
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
