@@ -1,5 +1,7 @@
-// database_service.dart
+
 import 'dart:convert';
+import 'package:barangay_census_app/services/auth_service.dart';
+import 'package:flutter/material.dart';
 import 'package:mysql1/mysql1.dart';
 import '../config/db_config.dart';
 import '../models/household.dart';
@@ -20,17 +22,42 @@ class DatabaseService {
     _conn = null;
   }
 
-  /// Insert household — NO philsys_image column
- Future<int> insertHousehold(Household household) async {
+
+Future<int> insertHousehold(Household household) async {
   final conn = await _connection;
+
+  // Convert family members to JSON string (with base64 image)
+  final familyMembersJson = household.familyMembers.map((member) {
+    return {
+      'name': member.name,
+      'age': member.age,
+      'gender': member.gender,
+      'relationship': member.relationship,
+      'philsys_image': member.philsysImage != null
+          ? base64Encode(member.philsysImage!)  // ← Convert to base64 string
+          : null,
+      'education_status': member.educationStatus,
+      'year_level': member.yearLevel,
+      'course': member.course,
+      'employment_status': member.employmentStatus,
+    };
+  }).toList();
+
+  // Convert economic data to JSON
+  final economicDataJson = household.economicData.map((e) => {
+        'memberName': e.memberName,
+        'occupation': e.occupation,
+        'income': e.monthlyIncome,
+        'employer': e.employer,
+      }).toList();
 
   final result = await conn.query(
     '''
     INSERT INTO households (
       household_number, head_of_household, total_members, contact_number,
       street, barangay, city, province, zip_code, gps_verified,
-      census_year
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      family_members, economic_data, census_year
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''',
     [
       household.householdNumber,
@@ -43,57 +70,26 @@ class DatabaseService {
       household.province,
       household.zipCode,
       household.gpsVerified ? 1 : 0,
-      household.censusYear, 
+      jsonEncode(familyMembersJson),   // ← Save as JSON string
+      jsonEncode(economicDataJson),    // ← Save as JSON string
+      household.censusYear,
     ],
   );
 
   final householdId = result.insertId!;
 
-  // Insert family members
-  for (final member in household.familyMembers) {
-    await conn.query(
-      '''
-      INSERT INTO family_members (
-        household_id, name, age, gender, relationship, philsys_image,
-        education_status, year_level, course, employment_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ''',
-      [
-        householdId,
-        member.name,
-        member.age,
-        member.gender,
-        member.relationship,
-        member.philsysImage,
-        member.educationStatus,
-        member.yearLevel,
-        member.course,
-        member.employmentStatus,
-      ],
-    );
-  }
-
-  // Insert economic data
-  for (final eco in household.economicData) {
-    await conn.query(
-      '''
-      INSERT INTO economic_data (
-        household_id, member_name, occupation, monthly_income, employer
-      ) VALUES (?, ?, ?, ?, ?)
-      ''',
-      [
-        householdId,
-        eco.memberName,
-        eco.occupation,
-        eco.monthlyIncome,
-        eco.employer,
-      ],
-    );
-  }
+  // Log activity
+  final currentUser = AuthService.getCurrentUser();
+  await logActivity(
+    action: 'Add Household',
+    fullname: currentUser?['fullname'] ?? 'Unknown',
+    role: currentUser?['role'] ?? 'Unknown',
+    userId: currentUser?['id'],
+    description: 'Added household: ${household.householdNumber}',
+  );
 
   return householdId;
-}
-
+} 
   // ────── GET ALL HOUSEHOLDS ──────
   Future<List<Household>> getAllHouseholds() async {
     final conn = await _connection;
@@ -194,5 +190,29 @@ Future<List<Map<String, dynamic>>> getAllUsers() async {
 Future<void> deleteUser(int id) async {
   final conn = await _connection;
   await conn.query('DELETE FROM users WHERE id = ?', [id]);
+}
+
+// Add this method to DatabaseService
+Future<void> logActivity({
+  required String action,
+  required String fullname,
+  required String role,
+  int? userId,
+  String? description,
+  String? ipAddress,
+}) async {
+  try {
+    final conn = await _connection;
+    await conn.query(
+      '''
+      INSERT INTO activity_logs 
+      (user_id, fullname, role, action, description, ip_address, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, NOW())
+      ''',
+      [userId, fullname, role, action, description ?? '', ipAddress],
+    );
+  } catch (e) {
+    debugPrint('Failed to log activity: $e');
+  }
 }
 }

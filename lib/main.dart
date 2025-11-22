@@ -1,12 +1,11 @@
 import 'package:barangay_census_app/core/home_page.dart';
-import 'package:barangay_census_app/services/db_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'pages/login_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await DBHelper.testQuery();
+  
   runApp(const MyApp());
 }
 

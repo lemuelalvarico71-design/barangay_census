@@ -1,3 +1,4 @@
+import 'package:barangay_census_app/services/auth_service.dart';
 import 'package:flutter/material.dart';
 
 class AppSidebar extends StatelessWidget {
@@ -78,7 +79,8 @@ class AppSidebar extends StatelessWidget {
           _buildNavItem(context, Icons.people, 'Population', 1),
           _buildNavItem(context, Icons.home, 'Households', 2),
           _buildNavItem(context, Icons.group, 'User Management', 3),
-          _buildNavItem(context, Icons.bar_chart, 'Reports', 4),
+          _buildNavItem(context, Icons.group, 'Activity Logs',4),
+          // _buildNavItem(context, Icons.bar_chart, 'Reports', 5),
           _buildNavItem(context, Icons.data_usage, 'Census Data', 5),
           const Spacer(),
           ListTile(
@@ -87,7 +89,9 @@ class AppSidebar extends StatelessWidget {
               'Logout',
               style: TextStyle(color: Colors.red, fontSize: 14),
             ),
-            onTap: () => Navigator.pushReplacementNamed(context, '/login'),
+            onTap: () { 
+              AuthService.logout();
+              Navigator.pushReplacementNamed(context, '/login');}
           ),
         ],
       ),

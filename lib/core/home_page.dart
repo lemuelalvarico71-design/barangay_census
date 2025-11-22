@@ -1,3 +1,4 @@
+import 'package:barangay_census_app/pages/activity_logs_page.dart';
 import 'package:barangay_census_app/pages/census_data_page.dart';
 import 'package:barangay_census_app/pages/dashboard_page.dart';
 import 'package:barangay_census_app/pages/household_page.dart';
@@ -38,7 +39,8 @@ class _HomePageState extends State<HomePage> {
       const PopulationPage(),
       const HouseholdPage(),
       const UserPage(),
-      const ReportsPage(),
+      const ActivityLogsPage(),
+      //const ReportsPage(),
       const CensusDataPage(),
     ];
 

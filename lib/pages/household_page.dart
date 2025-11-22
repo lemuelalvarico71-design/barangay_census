@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:barangay_census_app/models/household.dart';
+import 'package:barangay_census_app/services/auth_service.dart';
 import 'package:barangay_census_app/services/database_service.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:file_picker/file_picker.dart';
@@ -151,6 +152,15 @@ class _HouseholdPageState extends State<HouseholdPage> {
 
     try {
       await DatabaseService.instance.insertHousehold(household);
+
+      final currentUser = AuthService.getCurrentUser(); // You'll add this helper
+      await DatabaseService.instance.logActivity(
+        action: 'Add Household',
+        fullname: currentUser?['fullname'] ?? 'Unknown',
+        role: currentUser?['role'] ?? 'Unknown',
+        userId: currentUser?['id'],
+        description: 'Added household: ${household.householdNumber}',
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

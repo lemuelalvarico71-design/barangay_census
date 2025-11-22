@@ -1,314 +1,291 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../services/db_helper.dart'; 
 
 class CensusDataPage extends StatefulWidget {
   const CensusDataPage({super.key});
-
   @override
   State<CensusDataPage> createState() => _CensusDataPageState();
 }
 
 class _CensusDataPageState extends State<CensusDataPage> {
-  final _formKey = GlobalKey<FormState>();
-  int _currentStep = 0;
+final DBHelper _dbHelper = DBHelper.instance;
 
-  final List<Map<String, String>> _censusData = [
-    {
-      'purok': '1',
-      'population': '0',
-      'households': '0',
-      'lastUpdated': ''
-    },
-  ];
+  int totalHouseholds = 0;
+  int totalPopulation = 0;
+  double avgHouseholdSize = 0.0;
 
-  String _purok = '';
-  String _population = '';
-  String _households = '';
-  int? _editIndex; // track if editing existing entry
+  // Purok breakdown
+  final Map<String, int> purokHouseholds = {};
+  final Map<String, int> purokPopulation = {};
 
-  // Go to Add Page
-  void _continue() {
-    setState(() {
-      _editIndex = null;
-      _purok = '';
-      _population = '';
-      _households = '';
-      _currentStep = 1;
-    });
+  // Demographics from family_members JSON
+  int maleCount = 0, femaleCount = 0, otherCount = 0;
+  final Map<String, int> ageGroups = {
+    '0–17 (Minors)': 0,
+    '18–35 (Youth)': 0,
+    '36–59 (Adults)': 0,
+    '60+ (Seniors)': 0,
+  };
+
+  final Map<String, int> educationLevels = {
+    'No Formal Education': 0,
+    'Elementary': 0,
+    'High School': 0,
+    'Vocational/Technical': 0,
+    'College Undergraduate': 0,
+    'College Graduate': 0,
+    'Post-Graduate': 0,
+  };
+
+  final Map<String, int> civilStatusMap = {
+    'Single': 0,
+    'Married': 0,
+    'Live-in': 0,
+    'Widowed': 0,
+    'Separated': 0,
+  };
+
+  bool isLoading = true;
+  String lastUpdated = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRealCensusData();
   }
 
-  // Cancel form
-  void _cancel() {
-    setState(() {
-      _editIndex = null;
-      _purok = '';
-      _population = '';
-      _households = '';
-      _currentStep = 0;
-    });
-  }
+  Future<void> _loadRealCensusData() async {
+    setState(() => isLoading = true);
 
-  // Save new or edited data
-  void _save() {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        if (_editIndex == null) {
-          // Add new entry
-          _censusData.add({
-            'purok': _purok,
-            'population': _population,
-            'households': _households,
-            'lastUpdated': DateTime.now().toString().substring(0, 19),
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('✅ New census data added!')),
-          );
-        } else {
-          // Update existing entry
-          _censusData[_editIndex!] = {
-            'purok': _purok,
-            'population': _population,
-            'households': _households,
-            'lastUpdated': DateTime.now().toString().substring(0, 19),
-          };
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('✏️ Census data updated!')),
-          );
+    try {
+      final List<Map<String, dynamic>> households = await _dbHelper.queryAllHouseholds();
+
+      totalHouseholds = households.length;
+      totalPopulation = 0;
+      maleCount = femaleCount = otherCount = 0;
+      purokHouseholds.clear();
+      purokPopulation.clear();
+      ageGroups.updateAll((k, v) => 0);
+      educationLevels.updateAll((k, v) => 0);
+      civilStatusMap.updateAll((k, v) => 0);
+
+      for (var hh in households) {
+        final int membersCount = hh['total_members'] as int? ?? 0;
+        totalPopulation += membersCount;
+
+        // Use street as Purok identifier (you can adjust logic)
+        final String? street = hh['street']?.toString().trim();
+        final String purokKey = street?.isNotEmpty == true ? street! : 'Unknown Purok';
+        purokHouseholds.update(purokKey, (v) => v + 1, ifAbsent: () => 1);
+        purokPopulation.update(purokKey, (v) => v + membersCount, ifAbsent: () => membersCount);
+
+        // Parse family_members JSON
+        final String? jsonStr = hh['family_members'] as String?;
+        if (jsonStr != null && jsonStr.isNotEmpty && jsonStr != 'null') {
+          try {
+            final List<dynamic> members = jsonDecode(jsonStr);
+            for (var member in members) {
+              final String gender = (member['gender'] ?? 'Other').toString();
+              final int age = int.tryParse(member['age']?.toString() ?? '0') ?? 0;
+
+              // Gender count
+              if (gender == 'Male') maleCount++;
+              else if (gender == 'Female') femaleCount++;
+              else otherCount++;
+
+              // Age group
+              if (age <= 17) ageGroups['0–17 (Minors)'] = ageGroups['0–17 (Minors)']! + 1;
+              else if (age <= 35) ageGroups['18–35 (Youth)'] = ageGroups['18–35 (Youth)']! + 1;
+              else if (age <= 59) ageGroups['36–59 (Adults)'] = ageGroups['36–59 (Adults)']! + 1;
+              else if (age >= 60) ageGroups['60+ (Seniors)'] = ageGroups['60+ (Seniors)']! + 1;
+
+              // Education (you can extend this field later)
+              final String? edu = member['education_status']?.toString();
+              if (edu != null && educationLevels.containsKey(edu)) {
+                educationLevels[edu] = educationLevels[edu]! + 1;
+              }
+
+              // Civil status (add field later if needed)
+              // For now, we'll leave it zero or map from relationship
+            }
+          } catch (e) {
+            debugPrint("JSON parse error: $e");
+          }
         }
+      }
 
-        _cancel(); // Return to main view after saving
-      });
+      avgHouseholdSize = totalHouseholds > 0 ? totalPopulation / totalHouseholds : 0;
+      lastUpdated = DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.now());
+    } catch (e) {
+      debugPrint("Error loading census data: $e");
     }
-  }
 
-  // Delete entry
-  void _delete(int index) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Deletion'),
-        content:
-            Text('Are you sure you want to delete ${_censusData[index]['purok']}?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      setState(() => _censusData.removeAt(index));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🗑️ Entry deleted successfully!')),
-      );
-    }
-  }
-
-  // Edit entry
-  void _edit(int index) {
-    setState(() {
-      _editIndex = index;
-      _purok = _censusData[index]['purok']!;
-      _population = _censusData[index]['population']!;
-      _households = _censusData[index]['households']!;
-      _currentStep = 1;
-    });
+    setState(() => isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Census Data Management',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            // Step indicators
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildStepCard('View Data', 'Step 1', 'View existing census data', _currentStep == 0),
-                _buildStepCard('Add/Edit Data', 'Step 2', 'Add or edit census entry', _currentStep == 1),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Step 1 - View all data
-            if (_currentStep == 0)
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(Colors.blue[100]),
-                    columns: const [
-                      DataColumn(label: Text('Purok', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Population', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Households', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Last Updated', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
-                    ],
-                    rows: _censusData.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final data = entry.value;
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(data['purok']!)),
-                          DataCell(Text(data['population']!)),
-                          DataCell(Text(data['households']!)),
-                          DataCell(Text(data['lastUpdated']!)),
-                          DataCell(Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.orange),
-                                tooltip: 'Edit entry',
-                                onPressed: () => _edit(index),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                tooltip: 'Delete entry',
-                                onPressed: () => _delete(index),
-                              ),
-                            ],
-                          )),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-
-            // Step 2 - Add/Edit form
-            if (_currentStep == 1)
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadRealCensusData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    
+  const Text('Barangay Cenus Dashboard', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+                    // Key Metrics
+                    Row(
                       children: [
-                        Text(
-                          _editIndex == null
-                              ? 'Add New Census Entry'
-                              : 'Edit Census Entry',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Purok
-                        TextFormField(
-                          initialValue: _purok,
-                          decoration: const InputDecoration(labelText: 'Purok *'),
-                          validator: (value) =>
-                              value == null || value.isEmpty ? 'Please enter Purok name' : null,
-                          onChanged: (value) => _purok = value,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Population
-                        TextFormField(
-                          initialValue: _population,
-                          decoration: const InputDecoration(labelText: 'Population *'),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return 'Please enter population';
-                            if (int.tryParse(value) == null) return 'Enter a valid number';
-                            return null;
-                          },
-                          onChanged: (value) => _population = value,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Households
-                        TextFormField(
-                          initialValue: _households,
-                          decoration: const InputDecoration(labelText: 'Households *'),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return 'Please enter households';
-                            if (int.tryParse(value) == null) return 'Enter a valid number';
-                            return null;
-                          },
-                          onChanged: (value) => _households = value,
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Buttons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            OutlinedButton(
-                              onPressed: _cancel,
-                              style: OutlinedButton.styleFrom(foregroundColor: Colors.grey[700]),
-                              child: const Text('Cancel'),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed: _save,
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                              child: Text(_editIndex == null ? 'Save' : 'Update'),
-                            ),
-                          ],
-                        ),
+                        _metricCard('Households', totalHouseholds.toString(), Icons.home, Colors.blue),
+                        SizedBox(width: 10,), 
+                        _metricCard('Population', totalPopulation.toString(), Icons.people, Colors.green),
+                            SizedBox(width: 10,), 
+                        _metricCard('Puroks', purokHouseholds.length.toString(), Icons.map, Colors.orange),
+                            SizedBox(width: 10,), 
+                        _metricCard('Seniors', ageGroups['60+ (Seniors)'].toString(), Icons.elderly, Colors.purple),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 24),
+
+                    // Purok Breakdown
+                    _sectionTitle('Population per Purok (via Street)'),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: purokHouseholds.entries.map((e) {
+                            final pop = purokPopulation[e.key]!;
+                            return _purokRow(e.key, e.value, pop);
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Gender
+                    _sectionTitle('Population by Gender'),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _genderBar('Male', maleCount, Colors.blue),
+                           
+                            _genderBar('Female', femaleCount, Colors.pink),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Age Groups
+                    _sectionTitle('Age Group Distribution'),
+                    _progressCard(ageGroups, totalPopulation),
+                    const SizedBox(height: 24),
+
+                    // Education (will grow as you add field)
+                    _sectionTitle('Highest Educational Attainment'),
+                    _progressCard(educationLevels, totalPopulation, colorMap: {
+                      'College Graduate': Colors.green[700]!,
+                      'Post-Graduate': Colors.teal,
+                      'College Undergraduate': Colors.blue,
+                    }),
+                    const SizedBox(height: 32),
+
+                    
+                  ],
                 ),
               ),
+            ),
+    );
+  }
 
-            const SizedBox(height: 16),
-
-            // Add button at bottom (only in View mode)
-            if (_currentStep == 0)
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: _continue,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add New Data'),
-                ),
-              ),
-          ],
+  // Reusable Widgets
+  Widget _metricCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: SizedBox(
+        width: 170,
+        child: Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Icon(icon, size: 36, color: color),
+                const SizedBox(height: 8),
+                Text(value, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                Text(label, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStepCard(String title, String step, String desc, bool isCurrent) {
-    return Expanded(
-      child: Card(
-        color: isCurrent ? Colors.blue[100] : Colors.grey[200],
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.data_usage, color: isCurrent ? Colors.blue : Colors.grey),
-              const SizedBox(height: 6),
-              Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isCurrent ? Colors.black : Colors.grey[700])),
-              Text(desc, style: const TextStyle(color: Colors.grey)),
-              Text(step, style: const TextStyle(color: Colors.grey)),
-            ],
-          ),
+  Widget _purokRow(String purok, int hh, int pop) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(flex: 4, child: Text(purok, style: const TextStyle(fontWeight: FontWeight.w600))),
+          Expanded(child: Text('$hh HH', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(child: Text('$pop', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[700]))),
+        ],
+      ),
+    );
+  }
+
+  Widget _genderBar(String label, int count, Color color) {
+    return Column(
+      children: [
+        Text('$count', style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Container(width: 90, height: 100, color: color.withOpacity(0.2)),
+        Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+      ],
+    );
+  }
+
+  Widget _progressCard(Map<String, int> data, int total, {Map<String, Color>? colorMap}) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: data.entries.map((e) {
+            final percent = total > 0 ? (e.value / total * 100).toStringAsFixed(1) : '0';
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  SizedBox(width: 190, child: Text(e.key)),
+                  const SizedBox(width: 12),
+                  Expanded(child: LinearProgressIndicator(value: e.value / total, color: colorMap?[e.key] ?? Colors.blue)),
+                  const SizedBox(width: 12),
+                  SizedBox(width: 70, child: Text('$percent% (${e.value})', textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w500))),
+                ],
+              ),
+            );
+          }).toList(),
         ),
       ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Text(title, style: Theme.of(context).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold)),
     );
   }
 }

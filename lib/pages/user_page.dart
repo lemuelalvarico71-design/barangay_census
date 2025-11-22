@@ -1,3 +1,4 @@
+import 'package:barangay_census_app/services/auth_service.dart';
 import 'package:barangay_census_app/services/database_service.dart';
 import 'package:flutter/material.dart';
 
@@ -93,6 +94,15 @@ class _UserPageState extends State<UserPage> {
         role: _role,
       );
 
+      final currentUser = AuthService.getCurrentUser();
+await DatabaseService.instance.logActivity(
+  action: 'Add User',
+  fullname: currentUser?['fullname'] ?? 'System',
+  role: currentUser?['_role'] ?? 'Admin',
+  userId: currentUser?['id'],
+  description: 'Created user: $username ($_role)',
+);
+
       await _loadUsers(); // refresh
       _cancel();
 
@@ -143,7 +153,7 @@ class _UserPageState extends State<UserPage> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: SingleChildScrollView(
+     
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -177,8 +187,8 @@ class _UserPageState extends State<UserPage> {
                 alignment: Alignment.centerRight,
                 child: ElevatedButton.icon(
                   onPressed: _goToAdd,
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Add New User'),
+                  icon: const Icon(Icons.person_add, color: Colors.white,),
+                  label: const Text('Add New User', style: TextStyle(color: Colors.white),),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueAccent),
                 ),
@@ -189,7 +199,7 @@ class _UserPageState extends State<UserPage> {
                 style: const TextStyle(fontSize: 14, color: Colors.grey)),
           ],
         ),
-      ),
+      
     );
   }
 

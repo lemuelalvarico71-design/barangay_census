@@ -36,42 +36,45 @@ class _PopulationPageState extends State<PopulationPage> {
     }
   }
 
-  // ────── Delete Household ──────
-  Future<void> _deleteHousehold(int id, int index) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Household?'),
-        content: const Text('This action cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  // // ────── Delete Household ──────
+  // Future<void> _deleteHousehold(int id, int index) async {
+  //   final confirm = await showDialog<bool>(
+  //     context: context,
+  //     builder: (ctx) => AlertDialog(
+  //       title: const Text('Delete Household?'),
+  //       content: const Text('This action cannot be undone.'),
+  //       actions: [
+  //         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(ctx, true),
+  //           child: const Text('Delete', style: TextStyle(color: Colors.red)),
+  //         ),
+  //       ],
+  //     ),
+  //   );
 
-    if (confirm != true) return;
+  //   if (confirm != true) return;
 
-    try {
-      await DatabaseService.instance.deleteHousehold(id);
-      setState(() {
-        _households.removeAt(index);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Household deleted'), backgroundColor: Colors.green),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
+  //   try {
+  //     await DatabaseService.instance.deleteHousehold(id);
+  //     setState(() {
+  //       _households.removeAt(index);
+  //     });
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Household deleted'), backgroundColor: Colors.green),
+  //     );
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red),
+  //     );
+  //   }
+  // }
 
   // ────── Stats ──────
+  //todo
   int get totalPopulation => _households.fold(0, (sum, h) => sum + h.familyMembers.length);
+
+
   int get totalHouseholds => _households.length;
   double get avgFamilySize => totalHouseholds > 0 ? totalPopulation / totalHouseholds : 0;
   double get totalIncome => _households.fold(0.0, (sum, h) => sum + h.economicData.fold(0.0, (s, e) => s + e.monthlyIncome));
@@ -181,7 +184,7 @@ class _PopulationPageState extends State<PopulationPage> {
                               DataColumn(label: Text('Purok', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Barangay', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Income', style: TextStyle(fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Action')), // New column
+                              // DataColumn(label: Text('Action')), // New column
                             ],
                             rows: _households.asMap().entries.map((entry) {
                               final index = entry.key;
@@ -195,13 +198,13 @@ class _PopulationPageState extends State<PopulationPage> {
                                  DataCell(Text(h.street ?? '-', overflow: TextOverflow.ellipsis)),
                                 DataCell(Text(h.barangay ?? '-', overflow: TextOverflow.ellipsis)),
                                 DataCell(Text('₱${totalIncome.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green))),
-                                DataCell(
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    tooltip: 'Delete Household',
-                                    onPressed: () => _deleteHousehold(h.id!, index),
-                                  ),
-                                ),
+                                // DataCell(
+                                //   IconButton(
+                                //     icon: const Icon(Icons.delete, color: Colors.red),
+                                //     tooltip: 'Delete Household',
+                                //     onPressed: () => _deleteHousehold(h.id!, index),
+                                //   ),
+                                // ),
                               ]);
                             }).toList(),
                           ),
