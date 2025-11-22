@@ -27,7 +27,10 @@ class DBHelper {
     }
   }
 
-  Future<Results> query(String sql, [List<Object?> parameters = const []]) async {
+  Future<Results> query(
+    String sql, [
+    List<Object?> parameters = const [],
+  ]) async {
     final conn = await connection;
     try {
       return await conn.query(sql, parameters);
@@ -37,7 +40,10 @@ class DBHelper {
     }
   }
 
-  Future<Results> execute(String sql, [List<Object?> parameters = const []]) async {
+  Future<Results> execute(
+    String sql, [
+    List<Object?> parameters = const [],
+  ]) async {
     final conn = await connection;
     try {
       return await conn.query(sql, parameters);
@@ -56,7 +62,9 @@ class DBHelper {
   Future<void> testConnection() async {
     try {
       final conn = await connection;
-      final result = await conn.query('SELECT NOW() as server_time, VERSION() as version');
+      final result = await conn.query(
+        'SELECT NOW() as server_time, VERSION() as version',
+      );
       final row = result.first;
       debugPrint('Connected! Server time: ${row[0]}, MySQL Version: ${row[1]}');
     } catch (e) {
@@ -67,20 +75,20 @@ class DBHelper {
   // ==============================================
   // NEW: Get ALL households with full data
   // ==============================================
-  Future<List<Map<String, dynamic>>> queryAllHouseholds({int? censusYear}) async {
+  Future<List<Map<String, dynamic>>> queryAllHouseholds({
+    int? censusYear,
+  }) async {
     try {
       final String sql = '''
         SELECT 
           id,
           household_number,
           head_of_household,
-          total_members,
           contact_number,
           street,
           barangay,
           city,
           province,
-          zip_code,
           family_members,
           economic_data,
           created_at,
@@ -91,41 +99,46 @@ class DBHelper {
         ORDER BY id ASC
       ''';
 
-      final Results results = await query(sql, [censusYear ?? DateTime.now().year, censusYear]);
+      final Results results = await query(sql, [
+        censusYear ?? DateTime.now().year,
+        censusYear,
+      ]);
 
       List<Map<String, dynamic>> households = [];
 
       for (var row in results) {
+        // Safely parse family_members JSON to calculate total_members
+        final String? jsonStr = row[8]?.toString();
+        List<dynamic> parsedFamilyMembers = [];
+        if (jsonStr != null && jsonStr.isNotEmpty && jsonStr != 'null') {
+          try {
+            parsedFamilyMembers = jsonDecode(jsonStr);
+          } catch (e) {
+            debugPrint('JSON parse error for household ${row[0]}: $e');
+          }
+        }
+
         final Map<String, dynamic> map = {
           'id': row[0],
           'household_number': row[1]?.toString() ?? '',
           'head_of_household': row[2]?.toString() ?? '',
-          'total_members': row[3] is int ? row[3] : int.tryParse(row[3].toString()) ?? 0,
-          'contact_number': row[4]?.toString(),
-          'street': row[5]?.toString().trim().isNotEmpty == true ? row[5].toString().trim() : 'Unknown Purok',
-          'barangay': row[6]?.toString(),
-          'city': row[7]?.toString(),
-          'province': row[8]?.toString(),
-          'zip_code': row[9]?.toString(),
-          'family_members': row[10]?.toString(),        // JSON string
-          'economic_data': row[11]?.toString(),
-          'created_at': row[12],
-          'updated_at': row[13],
-          'census_year': row[14],
+          'total_members':
+              parsedFamilyMembers.length, // Calculated from family_members
+          'contact_number': row[3]?.toString(),
+          'street':
+              row[4]?.toString().trim().isNotEmpty == true
+                  ? row[4].toString().trim()
+                  : 'Unknown Purok',
+          'barangay': row[5]?.toString(),
+          'city': row[6]?.toString(),
+          'province': row[7]?.toString(),
+          'family_members': jsonStr, // JSON string
+          'economic_data': row[9]?.toString(),
+          'created_at': row[10],
+          'updated_at': row[11],
+          'census_year': row[12],
+          'parsed_family_members': parsedFamilyMembers,
         };
-
-        // Safely parse family_members JSON
-        final String? jsonStr = map['family_members'] as String?;
-        if (jsonStr != null && jsonStr.isNotEmpty && jsonStr != 'null') {
-          try {
-            map['parsed_family_members'] = jsonDecode(jsonStr);
-          } catch (e) {
-            debugPrint('JSON parse error for household ${map['id']}: $e');
-            map['parsed_family_members'] = [];
-          }
-        } else {
-          map['parsed_family_members'] = [];
-        }
 
         households.add(map);
       }
@@ -139,8 +152,11 @@ class DBHelper {
   }
 
   // Optional: Future enhancement — filter by purok
-  Future<List<Map<String, dynamic>>> queryHouseholdsByPurok(String purok) async {
-    return await queryAllHouseholds(censusYear: DateTime.now().year)
-        .then((list) => list.where((h) => h['street'] == purok).toList());
+  Future<List<Map<String, dynamic>>> queryHouseholdsByPurok(
+    String purok,
+  ) async {
+    return await queryAllHouseholds(
+      censusYear: DateTime.now().year,
+    ).then((list) => list.where((h) => h['street'] == purok).toList());
   }
 }
