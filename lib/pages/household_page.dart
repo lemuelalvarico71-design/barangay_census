@@ -156,22 +156,46 @@ void _showCameraPreview() {
             label: const Text('Capture', style: TextStyle(color: Colors.white),),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () async {
-              try {
-                final xFile = await _cameraController!.takePicture();
-                final bytes = await xFile.readAsBytes();
-                if (mounted) {
-                  setState(() => _householdHeadPhotoBytes = bytes);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Photo captured successfully!')),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Capture failed: $e')),
-                );
-              }
-            },
+  try {
+    // Show loading
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Capturing...'), duration: Duration(seconds: 2)),
+    );
+
+    final xFile = await _cameraController!.takePicture();
+    final bytes = await xFile.readAsBytes();
+
+    // CRITICAL: Check if bytes are valid
+    if (bytes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed: Photo is empty! Try again.')),
+      );
+      return;
+    }
+
+    // CRITICAL: Close dialog FIRST, then update state
+    Navigator.pop(context); // ← Ibalhin ni sa wala pa ang setState!
+
+    // Now the widget is still mounted because we popped first
+    if (mounted) {
+      setState(() {
+        _householdHeadPhotoBytes = bytes;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Photo captured! (${(bytes.lengthInBytes / 1024).toStringAsFixed(1)} KB)'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  } catch (e) {
+    Navigator.pop(context); // make sure dialog closes even on error
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Capture failed: $e'), backgroundColor: Colors.red),
+    );
+  }
+},
           ),
         ],
       ),
@@ -549,10 +573,15 @@ void _showCameraPreview() {
                   ),
                 ),
                 actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
+                 TextButton(
+  onPressed: () {
+    Navigator.pop(context);
+    _cameraController?.dispose();
+    _cameraController = null;
+    if (mounted) setState(() => _isCameraReady = false);
+  },
+  child: const Text('Cancel'),
+),
                   ElevatedButton(
                     onPressed: () {
                       if (nameCtrl.text.isEmpty) return;

@@ -10,8 +10,15 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 class HouseholdEditPage extends StatefulWidget {
-  final Household household;
-  const HouseholdEditPage({super.key, required this.household});
+final Household household;
+final VoidCallback onBack;
+
+const HouseholdEditPage({
+  super.key,
+  required this.household,
+  required this.onBack,
+});
+
 
   @override
   State<HouseholdEditPage> createState() => _HouseholdEditPageState();
@@ -123,6 +130,50 @@ class _HouseholdEditPageState extends State<HouseholdEditPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Camera error: $e')));
     }
   }
+
+  Widget _buildBreadcrumbs() {
+  return Container(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    child: Row(
+      children: [
+        // Back Button
+        IconButton(
+          onPressed: widget.onBack,
+          icon: const Icon(Icons.arrow_back, color: Colors.purple),
+          tooltip: "Back",
+        ),
+        const SizedBox(width: 4),
+
+        // Breadcrumb Items
+        InkWell(
+          onTap: widget.onBack,
+          child: const Text(
+            "Population",
+            style: TextStyle(
+              color: Colors.purple,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+        ),
+
+        const SizedBox(width: 6),
+        const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
+        const SizedBox(width: 6),
+
+        const Text(
+          "Edit Household",
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 
   void _showCameraPreview() {
     showDialog(
@@ -819,14 +870,16 @@ SizedBox(height: 10,),
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Edit Household #${_original.householdNumber}'),
-        backgroundColor: Colors.white,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
+    
+
+      body: SingleChildScrollView(
+  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _buildBreadcrumbs(),     // ← Added here
+      const SizedBox(height: 10),
+           Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -850,8 +903,11 @@ SizedBox(height: 10,),
               ],
             ),
           ),
+    ], 
         ),
+        
       ),
+      
     );
   }
 }

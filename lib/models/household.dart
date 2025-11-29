@@ -62,31 +62,45 @@ class Household {
   }
 
   // ────── Create from DB row ──────
-  factory Household.fromMap(Map<String, dynamic> map) {
-    Uint8List? headPhotoBytes;
-    final photo = map['head_photo'];
-    if (photo != null && photo is String && photo.isNotEmpty) {
+factory Household.fromMap(Map<String, dynamic> map) {
+  Uint8List? headPhotoBytes;
+
+  final dynamic photo = map['head_photo'];
+
+  if (photo != null) {
+    if (photo is Uint8List) {
+      headPhotoBytes = photo;
+    }
+    else if (photo is Blob) {
+      // FIX: Blob.toBytes() returns List<int>, not Uint8List!
+      headPhotoBytes = Uint8List.fromList(photo.toBytes());
+    }
+    else if (photo is List<int>) {
+      headPhotoBytes = Uint8List.fromList(photo);
+    }
+    else if (photo is String && photo.isNotEmpty) {
       try {
         headPhotoBytes = base64Decode(photo);
-      } catch (e) {
-        headPhotoBytes = null;
-      }
+      } catch (_) {}
     }
-    return Household(
-      householdNumber: map['household_number'] as String,
-      headOfHousehold: map['head_of_household'] as String,
-      totalMembers: map['total_members'] as int,
-      contactNumber: map['contact_number'] as String?,
-      street: map['street'] as String?,
-      barangay: map['barangay'] as String?,
-      city: map['city'] as String?,
-      province: map['province'] as String?,
-      censusYear: (map['census_year'] as int?) ?? DateTime.now().year,
-      familyMembers: _parseJsonList(map['family_members'], FamilyMember.fromMap),
-      economicData: _parseJsonList(map['economic_data'], EconomicEntry.fromMap),
-      headPhoto: headPhotoBytes,
-    );
   }
+
+  return Household(
+    id: map['id'] as int?,
+    householdNumber: map['household_number'] as String,
+    headOfHousehold: map['head_of_household'] as String,
+    totalMembers: map['total_members'] as int,
+    contactNumber: map['contact_number'] as String?,
+    street: map['street'] as String?,
+    barangay: map['barangay'] as String?,
+    city: map['city'] as String?,
+    province: map['province'] as String?,
+    censusYear: (map['census_year'] as int?) ?? DateTime.now().year,
+    familyMembers: _parseJsonList(map['family_members'], FamilyMember.fromMap),
+    economicData: _parseJsonList(map['economic_data'], EconomicEntry.fromMap),
+    headPhoto: headPhotoBytes,
+  );
+}
 
   Map<String, dynamic> toJson() => {
         'household_number': householdNumber,
