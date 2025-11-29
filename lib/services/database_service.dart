@@ -22,78 +22,121 @@ class DatabaseService {
   }
 
   Future<int> insertHousehold(Household household) async {
-    final conn = await _connection;
+  final conn = await _connection;
 
-    // Convert family members to JSON string (with base64 image)
-    final familyMembersJson =
-        household.familyMembers.map((member) {
-          return {
-            'name': member.name,
-            'age': member.age,
-            'gender': member.gender,
-            'relationship': member.relationship,
-            'philsys_image':
-                member.philsysImage != null
-                    ? base64Encode(
-                      member.philsysImage!,
-                    ) // ← Convert to base64 string
-                    : null,
-            'education_status': member.educationStatus,
-            'year_level': member.yearLevel,
-            'course': member.course,
-            'employment_status': member.employmentStatus,
-          };
-        }).toList();
+  // Convert family members (with base64 images)
+  final familyMembersJson = household.familyMembers.map((member) {
+    return {
+      'name': member.name,
+      'age': member.age,
+      'gender': member.gender,
+      'relationship': member.relationship,
+      'philsys_image': member.philsysImage != null
+          ? base64Encode(member.philsysImage!)
+          : null,
+      'education_status': member.educationStatus,
+      'year_level': member.yearLevel,
+      'course': member.course,
+      'employment_status': member.employmentStatus,
+    };
+  }).toList();
 
-    // Convert economic data to JSON
-    final economicDataJson =
-        household.economicData
-            .map(
-              (e) => {
-                'member_name': e.memberName,
-                'occupation': e.occupation,
-                'monthly_income': e.monthlyIncome,
-                'employer': e.employer,
-              },
-            )
-            .toList();
+  // Convert economic data
+  final economicDataJson = household.economicData.map((e) => {
+        'member_name': e.memberName,
+        'occupation': e.occupation,
+        'monthly_income': e.monthlyIncome,
+        'employer': e.employer,
+      }).toList();
 
-    final result = await conn.query(
+  // Convert head photo to base64
+  final String? headPhotoBase64 = household.headPhoto != null
+      ? base64Encode(household.headPhoto!)
+      : null;
+
+final result = await conn.query(
       '''
-    INSERT INTO households (
-      household_number, head_of_household, contact_number,
-      street, barangay, city, province,
-      family_members, economic_data, census_year
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''',
+      INSERT INTO households (
+        household_number, head_of_household, head_photo,
+        contact_number, street, barangay, city, province,
+        family_members, economic_data, census_year
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ''',
       [
         household.householdNumber,
         household.headOfHousehold,
+        headPhotoBase64,
         household.contactNumber,
         household.street,
         household.barangay,
         household.city,
         household.province,
-        jsonEncode(familyMembersJson), // ← Save as JSON string
-        jsonEncode(economicDataJson), // ← Save as JSON string
+        jsonEncode(familyMembersJson),
+        jsonEncode(economicDataJson),
         household.censusYear,
       ],
     );
 
-    final householdId = result.insertId!;
+  final householdId = result.insertId!;
 
-    // Log activity
-    final currentUser = AuthService.getCurrentUser();
-    await logActivity(
-      action: 'Add Household',
-      fullname: currentUser?['fullname'] ?? 'Unknown',
-      role: currentUser?['role'] ?? 'Unknown',
-      userId: currentUser?['id'],
-      description: 'Added household: ${household.householdNumber}',
-    );
+  // Log activity
+  final currentUser = AuthService.getCurrentUser();
+  await logActivity(
+    action: 'Add Household',
+    fullname: currentUser?['fullname'] ?? 'Unknown',
+    role: currentUser?['role'] ?? 'Unknown',
+    userId: currentUser?['id'],
+    description: 'Added household: ${household.householdNumber}',
+  );
 
-    return householdId;
-  }
+  return householdId;
+}
+
+Future<void> updateHousehold(Household household) async {
+  final conn = await _connection;
+
+  final familyMembersJson = household.familyMembers.map((m) => {
+    'name': m.name,
+    'age': m.age,
+    'gender': m.gender,
+    'relationship': m.relationship,
+    'philsys_image': m.philsysImage != null ? base64Encode(m.philsysImage!) : null,
+    'education_status': m.educationStatus,
+    'year_level': m.yearLevel,
+    'course': m.course,
+    'employment_status': m.employmentStatus,
+  }).toList();
+
+  final economicDataJson = household.economicData.map((e) => {
+    'member_name': e.memberName,
+    'occupation': e.occupation,
+    'monthly_income': e.monthlyIncome,
+    'employer': e.employer,
+  }).toList();
+
+  final headPhotoBase64 = household.headPhoto != null ? base64Encode(household.headPhoto!) : null;
+
+  await conn.query('''
+    UPDATE households SET
+      household_number = ?, head_of_household = ?, head_photo = ?,
+      contact_number = ?, street = ?, barangay = ?, city = ?, province = ?,
+      family_members = ?, economic_data = ?, census_year = ?
+    WHERE id = ?
+  ''', [
+    household.householdNumber,
+    household.headOfHousehold,
+    headPhotoBase64,
+    household.contactNumber,
+    household.street,
+    household.barangay,
+    household.city,
+    household.province,
+    jsonEncode(familyMembersJson),
+    jsonEncode(economicDataJson),
+    household.censusYear,
+    household.id,
+  ]);
+}
 
   // ────── GET ALL HOUSEHOLDS ──────
   Future<List<Household>> getAllHouseholds() async {
@@ -119,8 +162,6 @@ class DatabaseService {
         city: f['city'] as String?,
         censusYear: (f['census_year'] as int?) ?? DateTime.now().year,
         province: f['province'] as String?,
-        zipCode: null, // Not in schema
-        gpsVerified: false, // Not in schema
         familyMembers: familyMembers,
         economicData: _parseEconomicData(f['economic_data']),
       );

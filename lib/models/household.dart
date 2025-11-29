@@ -1,4 +1,3 @@
-// models/household.dart
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:mysql1/mysql1.dart';
@@ -14,12 +13,12 @@ class Household {
   final String? barangay;
   final String? city;
   final String? province;
-  final String? zipCode;
-  final bool gpsVerified;
   final int censusYear;
 
   final List<FamilyMember> familyMembers;
   final List<EconomicEntry> economicData;
+
+  final Uint8List? headPhoto;
 
   Household({
     this.id,
@@ -31,11 +30,10 @@ class Household {
     this.barangay,
     this.city,
     this.province,
-    this.zipCode,
-    required this.gpsVerified,
     required this.censusYear,
     List<FamilyMember>? familyMembers,
     List<EconomicEntry>? economicData,
+    this.headPhoto,
   })  : familyMembers = familyMembers ?? <FamilyMember>[],
         economicData = economicData ?? <EconomicEntry>[];
 
@@ -65,6 +63,15 @@ class Household {
 
   // ────── Create from DB row ──────
   factory Household.fromMap(Map<String, dynamic> map) {
+    Uint8List? headPhotoBytes;
+    final photo = map['head_photo'];
+    if (photo != null && photo is String && photo.isNotEmpty) {
+      try {
+        headPhotoBytes = base64Decode(photo);
+      } catch (e) {
+        headPhotoBytes = null;
+      }
+    }
     return Household(
       householdNumber: map['household_number'] as String,
       headOfHousehold: map['head_of_household'] as String,
@@ -74,11 +81,10 @@ class Household {
       barangay: map['barangay'] as String?,
       city: map['city'] as String?,
       province: map['province'] as String?,
-      zipCode: map['zip_code'] as String?,
       censusYear: (map['census_year'] as int?) ?? DateTime.now().year,
-      gpsVerified: (map['gps_verified'] as int?) == 1,
       familyMembers: _parseJsonList(map['family_members'], FamilyMember.fromMap),
       economicData: _parseJsonList(map['economic_data'], EconomicEntry.fromMap),
+      headPhoto: headPhotoBytes,
     );
   }
 
@@ -91,8 +97,6 @@ class Household {
         'barangay': barangay,
         'city': city,
         'province': province,
-        'zip_code': zipCode,
-        'gps_verified': gpsVerified ? 1 : 0,
         'family_members': familyMembers.map((m) => m.toJson()).toList(),
         'economic_data': economicData.map((e) => e.toJson()).toList(),
       };

@@ -3,7 +3,7 @@ import 'package:barangay_census_app/pages/census_data_page.dart';
 import 'package:barangay_census_app/pages/dashboard_page.dart';
 import 'package:barangay_census_app/pages/household_page.dart';
 import 'package:barangay_census_app/pages/population_page.dart';
-import 'package:barangay_census_app/pages/reports_page.dart';
+// import 'package:barangay_census_app/pages/reports_page.dart';
 import 'package:barangay_census_app/pages/user_page.dart';
 import 'package:flutter/material.dart';
 import '../widgets/app_sidebar.dart';
@@ -48,6 +48,7 @@ class _HomePageState extends State<HomePage> {
       body: Row(
         children: [
           AppSidebar(selectedIndex: selectedIndex, onItemTapped: onItemTapped),
+          //main content
           Expanded(child: pages[selectedIndex]),
         ],
       ),

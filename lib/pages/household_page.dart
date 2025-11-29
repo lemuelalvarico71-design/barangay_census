@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
-
 import 'package:barangay_census_app/models/household.dart';
 import 'package:barangay_census_app/services/auth_service.dart';
 import 'package:barangay_census_app/services/database_service.dart';
+import 'package:camera/camera.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +18,12 @@ class HouseholdPage extends StatefulWidget {
 class _HouseholdPageState extends State<HouseholdPage> {
   final _formKey = GlobalKey<FormState>();
 
+  // camera var
+  List<CameraDescription>? _cameras;
+  CameraController? _cameraController;
+  bool _isCameraReady = false;
+  Uint8List? _householdHeadPhotoBytes;
+
   // ────── Controllers ──────
   final _householdNumberController = TextEditingController();
   final _headOfHouseholdController = TextEditingController();
@@ -28,7 +34,6 @@ class _HouseholdPageState extends State<HouseholdPage> {
   final _barangayController = TextEditingController();
   final _cityController = TextEditingController();
   final _provinceController = TextEditingController();
-  final _zipController = TextEditingController();
 
   // ────── Census Year ──────
   int? _censusYear;
@@ -38,7 +43,6 @@ class _HouseholdPageState extends State<HouseholdPage> {
   List<Map<String, dynamic>> _familyMembers = [];
   List<Map<String, dynamic>> _economicData = [];
 
-  bool _gpsVerified = false;
 
   @override
   void dispose() {
@@ -50,10 +54,137 @@ class _HouseholdPageState extends State<HouseholdPage> {
     _barangayController.dispose();
     _cityController.dispose();
     _provinceController.dispose();
-    _zipController.dispose();
     _censusYearController.dispose();
+    _cameraController?.dispose();
     super.dispose();
+    
   }
+
+  @override
+  void initState() {
+      super.initState();
+     
+  }
+
+//trigger camera
+Future<void> _takeHeadPhoto() async {
+  // If camera is already ready → just show preview
+  if (_isCameraReady && _cameraController != null) {
+    _showCameraPreview();
+    return;
+  }
+
+  // Otherwise → initialize camera first
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Initializing camera...')),
+  );
+
+  try {
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No camera found on this device')),
+      );
+      return;
+    }
+
+    _cameraController = CameraController(
+      cameras[0],
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
+
+    await _cameraController!.initialize();
+
+    if (!mounted) return;
+
+    setState(() => _isCameraReady = true);
+
+    _showCameraPreview();
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Camera failed to start: $e')),
+    );
+  }
+}
+
+void _showCameraPreview() {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => WillPopScope(
+      onWillPop: () async {
+        await _cameraController?.dispose();
+        _cameraController = null;
+        if (mounted) setState(() => _isCameraReady = false);
+        return true;
+      },
+      child: AlertDialog(
+        title: const Text('Capture Photo of Household Head'),
+        content: SizedBox(
+          width: 400,
+          height: 400,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 1.0, // 1:1 square – perfect for face
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Camera Preview
+                  CameraPreview(_cameraController!),
+
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await _cameraController?.dispose();
+              _cameraController = null;
+              if (mounted) setState(() => _isCameraReady = false);
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.camera),
+            label: const Text('Capture', style: TextStyle(color: Colors.white),),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () async {
+              try {
+                final xFile = await _cameraController!.takePicture();
+                final bytes = await xFile.readAsBytes();
+                if (mounted) {
+                  setState(() => _householdHeadPhotoBytes = bytes);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Photo captured successfully!')),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Capture failed: $e')),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    ),
+  ).then((_) {
+    // Final cleanup if user swiped away
+    if (_householdHeadPhotoBytes == null) {
+      _cameraController?.dispose();
+      _cameraController = null;
+      if (mounted) setState(() => _isCameraReady = false);
+    }
+  });
+}
 
   // ────── Year Picker ──────
   Future<void> _pickCensusYear() async {
@@ -132,8 +263,6 @@ class _HouseholdPageState extends State<HouseholdPage> {
           _provinceController.text.isEmpty
               ? null
               : _provinceController.text.trim(),
-      zipCode: _zipController.text.isEmpty ? null : _zipController.text.trim(),
-      gpsVerified: _gpsVerified,
       familyMembers:
           _familyMembers
               .map(
@@ -161,6 +290,7 @@ class _HouseholdPageState extends State<HouseholdPage> {
                 ),
               )
               .toList(),
+              headPhoto: _householdHeadPhotoBytes,
       censusYear: _censusYear!, // ← SAVE YEAR
     );
 
@@ -186,7 +316,6 @@ class _HouseholdPageState extends State<HouseholdPage> {
       setState(() {
         _familyMembers.clear();
         _economicData.clear();
-        _gpsVerified = false;
         _householdNumberController.clear();
         _headOfHouseholdController.clear();
         _totalFamilyMembersController.clear();
@@ -195,7 +324,7 @@ class _HouseholdPageState extends State<HouseholdPage> {
         _barangayController.clear();
         _cityController.clear();
         _provinceController.clear();
-        _zipController.clear();
+      
         _censusYear = null;
         _censusYearController.clear();
       });
@@ -550,6 +679,8 @@ class _HouseholdPageState extends State<HouseholdPage> {
     );
   }
 
+  
+
   Widget _buildDialogImagePreview(
     Uint8List bytes,
     VoidCallback onChange,
@@ -677,72 +808,241 @@ class _HouseholdPageState extends State<HouseholdPage> {
   );
 
   Widget _buildHouseholdInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle('Basic Information'),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _householdNumberController,
-                decoration: const InputDecoration(
-                  labelText: 'Household Number *',
-                  border: OutlineInputBorder(),
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _sectionTitle('Basic Information'),
+      Row(
+        children: [
+          SizedBox(
+            
+              height: 110,
+             
+            child: Row(
+              children: [
+          // ────── HEAD OF HOUSEHOLD PHOTO PREVIEW WITH ICONS ──────
+          Stack(
+            children: [
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade400, width: 1.5),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+                child: _householdHeadPhotoBytes != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(7),
+                        child: Image.memory(
+                          _householdHeadPhotoBytes!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      )
+                    : Center(
+                      child: 
+                          Icon(Icons.person_outline, size: 45, color: Colors.grey),
+                          
+                      ),
               ),
+
+    // ────── Floating Action Icons (Only when NO photo) ──────
+    if (_householdHeadPhotoBytes == null) ...[
+      // Camera Icon (bottom-left)
+      Positioned(
+  bottom: 6,
+  right: 40,
+  child: GestureDetector(
+    onTap: () => _takeHeadPhoto(), // ← Remove the conditional!
+    child: Container(
+      padding: const EdgeInsets.all(6),
+      decoration: const BoxDecoration(
+        color: Colors.purple,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: const Icon(Icons.camera_alt, size: 15, color: Colors.white),
+    ),
+  ),
+),
+
+      // Upload Icon (Bottom-right)
+      Positioned(
+        bottom: 6,
+        right: 6,
+        child: GestureDetector(
+          onTap: () async {
+            final result = await FilePicker.platform.pickFiles(
+              type: FileType.image,
+              withData: true,
+            );
+            if (result != null && result.files.single.bytes != null) {
+              setState(() {
+                _householdHeadPhotoBytes = result.files.single.bytes!;
+              });
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: TextFormField(
-                controller: _headOfHouseholdController,
-                decoration: const InputDecoration(
-                  labelText: 'Head of Household *',
-                  border: OutlineInputBorder(),
+            child: const Icon(Icons.upload, size: 15, color: Colors.white),
+          ),
+        ),
+      ),
+    ]
+
+    // ────── Small Edit/Remove Icons (Only when photo EXISTS) ──────
+    else ...[
+      Positioned(
+        top: 4,
+        right: 4,
+        child: Row(
+          children: [
+            // Retake (Camera)
+           GestureDetector(
+  onTap: () => _takeHeadPhoto(), // ← Remove conditional here too!
+  child: Container(
+    padding: const EdgeInsets.all(4),
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      shape: BoxShape.circle,
+      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 3)],
+    ),
+    child: const Icon(Icons.camera_alt, size: 16, color: Colors.purple),
+  ),
+),
+            const SizedBox(width: 4),
+            // Remove
+            GestureDetector(
+              onTap: () => setState(() => _householdHeadPhotoBytes = null),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 3)],
                 ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+                child: const Icon(Icons.close, size: 16, color: Colors.red),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _contactNumberController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Contact Number',
-                  border: OutlineInputBorder(),
-                ),
+      ),
+    ],
+  ],
+),
+            
+        ],
+              
+            ), 
+        
+            ),
+           
+
+          SizedBox(width: 10,), 
+          Expanded(
+            child: Container(
+               width: double.infinity,
+                
+              decoration: BoxDecoration(
+                //color: Colors.green, 
+              ),
+            
+              child: Column(
+                children: [
+              TextFormField(
+              controller: _householdNumberController,
+              decoration: const InputDecoration(
+                labelText: 'Household Number *',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
+SizedBox(height: 10,),
+
+ TextFormField(
+              controller: _headOfHouseholdController,
+              decoration: const InputDecoration(
+                labelText: 'Head of Household *',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
+
+
+
+
+
+                ],
+
+
+              ),
+            
+            ),
+          ), 
+
+          SizedBox(width: 10,), 
+          Expanded(
+            child: Container(
+               width: double.infinity,
+               
+              decoration: BoxDecoration(
+                //color: Colors.yellow, 
+              ),
+              child: Column(
+                children: [
+TextFormField(
+              controller: _contactNumberController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Contact Number',
+                border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(width: 16),
-            // ────── CENSUS YEAR FIELD ──────
-            Expanded(
-              child: TextFormField(
-                controller: _censusYearController,
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Census Year *',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: const Icon(
-                    Icons.calendar_today,
-                    color: Colors.purple,
-                  ),
-                ),
-                onTap: _pickCensusYear,
-                validator: (v) => _censusYear == null ? 'Required' : null,
+SizedBox(height: 10,), 
+ TextFormField(
+              controller: _censusYearController,
+              readOnly: true,
+              decoration: InputDecoration(
+                labelText: 'Census Year *',
+                border: const OutlineInputBorder(),
+                suffixIcon: const Icon(Icons.calendar_today, color: Colors.purple),
               ),
+              onTap: _pickCensusYear,
+              validator: (v) => _censusYear == null ? 'Required' : null,
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-      ],
-    );
-  }
+        
+
+
+
+
+
+                ],
+              ),
+            
+            
+            ),
+          ), 
+
+          SizedBox(width: 10,)
+
+        ],
+      ), 
+    
+      
+    ],
+  );
+}
+
 
   Widget _buildFamilyMembers() {
     return _dynamicList(
@@ -875,7 +1175,6 @@ class _HouseholdPageState extends State<HouseholdPage> {
         _textField(_barangayController, 'Barangay'),
         _textField(_cityController, 'City / Municipality'),
         _textField(_provinceController, 'Province'),
-        _textField(_zipController, 'ZIP Code'),
       ],
     );
   }
@@ -950,7 +1249,7 @@ class _HouseholdPageState extends State<HouseholdPage> {
                 _buildEconomicData(),
                 const SizedBox(height: 24),
                 _buildAddressSection(),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _save,
                   style: ElevatedButton.styleFrom(
