@@ -163,12 +163,12 @@ await DatabaseService.instance.logActivity(
 
             // Step cards
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _stepCard('View Users', 'Step 1', 'List all users',
-                    _currentStep == 0),
-                const SizedBox(width: 12),
-                _stepCard('Add User', 'Step 2', 'Create new user',
-                    _currentStep == 1),
+                SizedBox(
+                  width: 350,
+                  child: _stepCard('View Users', 'Step 1', 'List all users', _currentStep == 0),
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -181,18 +181,7 @@ await DatabaseService.instance.logActivity(
 
             const SizedBox(height: 16),
 
-            // Bottom button
-            if (_currentStep == 0)
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: _goToAdd,
-                  icon: const Icon(Icons.person_add, color: Colors.white,),
-                  label: const Text('Add New User', style: TextStyle(color: Colors.white),),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent),
-                ),
-              ),
+            // ...existing code...
 
             const SizedBox(height: 8),
             Text('Last Updated: $_nowPH',
@@ -206,23 +195,74 @@ await DatabaseService.instance.logActivity(
   // ────── STEP CARD ──────
   Widget _stepCard(String title, String step, String desc, bool active) {
     return Expanded(
-      child: Card(
-        color: active ? Colors.blue[50] : Colors.grey[100],
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: active
+              ? LinearGradient(
+                  colors: [Colors.blue.shade100, Colors.blue.shade50],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: [Colors.grey.shade200, Colors.grey.shade100],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.circle,
-                  size: 16, color: active ? Colors.blue : Colors.grey),
-              const SizedBox(height: 8),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(desc,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              Text(step,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              Row(
+                children: [
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: active ? Colors.blueAccent : Colors.grey,
+                      shape: BoxShape.circle,
+                      boxShadow: active
+                          ? [BoxShadow(color: Colors.blueAccent.withOpacity(0.2), blurRadius: 6)]
+                          : [],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    step,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: active ? Colors.blueAccent : Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: active ? Colors.blueAccent : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                desc,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[700],
+                ),
+              ),
             ],
           ),
         ),

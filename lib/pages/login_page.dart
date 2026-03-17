@@ -135,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                       Image.asset('assets/images/logo.png', height: 80, width: 80),
                       const SizedBox(height: 16),
                       const Text(
-                        'Brgy. Rizal Census Management',
+                        'Brgy Census Management',
                         style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF031273)),
                       ),
                       const SizedBox(height: 24),
